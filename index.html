@@ -321,28 +321,6 @@ button,select,input{font-family:inherit}
         <div class="filter-feedback" id="filterFeedback">Motore demo pronto.</div>
       </div>
 
-      <div class="api-counter">
-        <div class="api-counter-head">
-          <div>
-            <div class="api-counter-title">Contatore consumi API</div>
-            <p class="api-help" style="margin-top:3px">Limite mensile impostato: 500 chiamate. In demo resta a zero.</p>
-          </div>
-          <span class="api-status demo" id="apiCounterStatus">ZERO CONSUMI</span>
-        </div>
-        <div class="api-counter-grid">
-          <div class="api-counter-card compact"><span>Mese corrente</span><b id="apiMonthLabel">-</b></div>
-          <div class="api-counter-card"><span>Usate</span><b id="apiCallsUsed">0</b></div>
-          <div class="api-counter-card"><span>Rimanenti</span><b id="apiCallsLeft">500</b></div>
-          <div class="api-counter-card compact"><span>Consumo</span><b id="apiUsagePct">0%</b></div>
-        </div>
-        <div class="api-progress"><div class="api-progress-fill" id="apiProgressFill"></div></div>
-        <div class="api-counter-actions">
-          <button class="btn secondary tiny" onclick="simulateApiCall()">Simula 1 chiamata</button>
-          <button class="btn secondary tiny" onclick="simulateApiCall(10)">Simula 10 chiamate</button>
-          <button class="btn secondary tiny" onclick="resetApiCounter()">Reset mese</button>
-        </div>
-      </div>
-
       
       <div class="api-counter">
         <div class="api-counter-head">
