@@ -348,6 +348,17 @@ button,select,input{font-family:inherit}
 @media(max-width:620px){.date-filter-actions{grid-template-columns:1fr}}
 
 
+
+.empty-state{
+  border:1px solid rgba(34,211,238,.25);
+  background:rgba(15,23,42,.58);
+  border-radius:22px;
+  padding:28px;
+  text-align:center;
+  color:var(--muted);
+}
+.empty-state b{display:block;color:var(--text);font-size:22px;margin-bottom:8px}
+
 </style>
 </head>
 <body>
@@ -800,7 +811,8 @@ function renderMatches(){el('matches').innerHTML=filtered.map(m=>`<div class="ma
 </div></div>`).join('')||'<p class="note">Nessuna partita trovata con questi filtri.</p>'}
 function bar(label,val){return `<div class="bar"><div class="fill" style="width:${Math.max(8,val)}%"><span>${label}</span><span>${val}%</span></div></div>`}
 
-function renderAnalysis(){const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div class="sections"><div class="box"><h3>Analisi tempi</h3><div class="list"><div class="row"><span>Over 0.5 PT</span><b>${m.p.pt05}%</b></div><div class="row"><span>Over 1.5 PT</span><b>${m.p.pt15}%</b></div><div class="row"><span>BTTS 1° tempo</span><b>${m.p.btts1}%</b></div><div class="row"><span>Over 0.5 ST</span><b>${m.p.st05}%</b></div><div class="row"><span>Over 1.5 ST</span><b>${m.p.st15}%</b></div><div class="row"><span>BTTS 2° tempo</span><b>${m.p.btts2}%</b></div></div></div><div class="box"><h3>Corner</h3><div class="list"><div class="row"><span>Over 7.5</span><b>${m.p.corners75}%</b></div><div class="row"><span>Over 8.5</span><b>${m.p.corners85}%</b></div><div class="row"><span>Under 10.5</span><b>${m.p.u105}%</b></div><div class="row"><span>Under 11.5</span><b>${m.p.u115}%</b></div><div class="row"><span>Under 12.5</span><b>${m.p.u125}%</b></div></div></div><div class="box"><h3>Cartellini</h3><div class="list"><div class="row"><span>Over 2.5</span><b>${m.p.cards25}%</b></div><div class="row"><span>Over 3.5</span><b>${m.p.cards35}%</b></div><div class="row"><span>Under 5.5</span><b>${m.p.u55}%</b></div><div class="row"><span>Under 6.5</span><b>${m.p.u65}%</b></div><div class="row"><span>Under 7.5</span><b>${m.p.u75}%</b></div></div></div><div class="box"><h3>Indicatori avanzati demo</h3><div class="list"><div class="row"><span>xG ${m.home}</span><b>${m.xgH}</b></div><div class="row"><span>xG ${m.away}</span><b>${m.xgA}</b></div><div class="row"><span>Forma ${m.home}</span><b>${m.formH}</b></div><div class="row"><span>Forma ${m.away}</span><b>${m.formA}</b></div></div></div></div><div class="verdict"><h2>Conclusione finale</h2><p>La giocata più equilibrata è <b>${m.safe}</b>. Il colpo valore suggerito è <b>${m.value}</b>, da usare solo se la quota reale mantiene margine rispetto alla probabilità stimata.</p><div class="picks"><div class="pick"><small>SAFE PICK</small><strong>${m.safe}</strong></div><div class="pick"><small>SEGNO FISSO</small><strong>${m.segno}</strong></div><div class="pick"><small>OVER</small><strong>${m.over}</strong></div><div class="pick"><small>COLPO VALORE</small><strong>${m.value}</strong></div></div><p class="note">Demo: percentuali simulate e realistiche, non collegate a quote/live API. Il layout è già pronto per API-Football o altra sorgente.</p></div>`}
+function renderAnalysis(){
+  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div class="sections"><div class="box"><h3>Analisi tempi</h3><div class="list"><div class="row"><span>Over 0.5 PT</span><b>${m.p.pt05}%</b></div><div class="row"><span>Over 1.5 PT</span><b>${m.p.pt15}%</b></div><div class="row"><span>BTTS 1° tempo</span><b>${m.p.btts1}%</b></div><div class="row"><span>Over 0.5 ST</span><b>${m.p.st05}%</b></div><div class="row"><span>Over 1.5 ST</span><b>${m.p.st15}%</b></div><div class="row"><span>BTTS 2° tempo</span><b>${m.p.btts2}%</b></div></div></div><div class="box"><h3>Corner</h3><div class="list"><div class="row"><span>Over 7.5</span><b>${m.p.corners75}%</b></div><div class="row"><span>Over 8.5</span><b>${m.p.corners85}%</b></div><div class="row"><span>Under 10.5</span><b>${m.p.u105}%</b></div><div class="row"><span>Under 11.5</span><b>${m.p.u115}%</b></div><div class="row"><span>Under 12.5</span><b>${m.p.u125}%</b></div></div></div><div class="box"><h3>Cartellini</h3><div class="list"><div class="row"><span>Over 2.5</span><b>${m.p.cards25}%</b></div><div class="row"><span>Over 3.5</span><b>${m.p.cards35}%</b></div><div class="row"><span>Under 5.5</span><b>${m.p.u55}%</b></div><div class="row"><span>Under 6.5</span><b>${m.p.u65}%</b></div><div class="row"><span>Under 7.5</span><b>${m.p.u75}%</b></div></div></div><div class="box"><h3>Indicatori avanzati demo</h3><div class="list"><div class="row"><span>xG ${m.home}</span><b>${m.xgH}</b></div><div class="row"><span>xG ${m.away}</span><b>${m.xgA}</b></div><div class="row"><span>Forma ${m.home}</span><b>${m.formH}</b></div><div class="row"><span>Forma ${m.away}</span><b>${m.formA}</b></div></div></div></div><div class="verdict"><h2>Conclusione finale</h2><p>La giocata più equilibrata è <b>${m.safe}</b>. Il colpo valore suggerito è <b>${m.value}</b>, da usare solo se la quota reale mantiene margine rispetto alla probabilità stimata.</p><div class="picks"><div class="pick"><small>SAFE PICK</small><strong>${m.safe}</strong></div><div class="pick"><small>SEGNO FISSO</small><strong>${m.segno}</strong></div><div class="pick"><small>OVER</small><strong>${m.over}</strong></div><div class="pick"><small>COLPO VALORE</small><strong>${m.value}</strong></div></div><p class="note">Demo: percentuali simulate e realistiche, non collegate a quote/live API. Il layout è già pronto per API-Football o altra sorgente.</p></div>`}
 
 
 function showKickoraError(msg, err=null){
@@ -845,6 +857,22 @@ async function fetchMatchesByDate(date){
   return data.matches || [];
 }
 
+function renderEmptyState(message='Nessuna partita trovata per il periodo selezionato'){
+  filtered = [];
+  current = null;
+
+  if(el('kpiMatches')) el('kpiMatches').textContent = 0;
+  if(el('kpiSafe')) el('kpiSafe').textContent = 0;
+  if(el('kpiValue')) el('kpiValue').textContent = 0;
+  if(el('kpiOver')) el('kpiOver').textContent = '0%';
+
+  if(el('topPicks')) el('topPicks').innerHTML = `<div class="empty-state"><b>${message}</b><span>Prova un altro periodo o aggiorna più tardi.</span></div>`;
+  if(el('aiAlerts')) el('aiAlerts').innerHTML = '';
+  if(el('matchList')) el('matchList').innerHTML = `<div class="empty-state"><b>Nessuna partita</b><span>${message}</span></div>`;
+  if(el('analysis')) el('analysis').innerHTML = `<div class="empty-state"><b>Nessuna analisi disponibile</b><span>${message}</span></div>`;
+  updateFeedback();
+}
+
 async function loadRange(range='today'){
   activeDateRange = range;
   setActiveDateButton(range);
@@ -862,7 +890,14 @@ async function loadRange(range='today'){
       chunks.push(...rows);
     }
 
-    if(!chunks.length) throw new Error('Nessuna partita trovata nel periodo selezionato');
+    if(!chunks.length){
+      const label = range === 'tomorrow' ? 'Nessuna partita trovata per domani' : 'Nessuna partita trovata per oggi';
+      matchesData = [];
+      populateCompetitions();
+      renderEmptyState(label);
+      if(typeof checkLiveSystem === 'function') await checkLiveSystem();
+      return;
+    }
 
     matchesData = chunks.map(normalizeKickoraLiveMatch);
     filtered = sortMatches([...matchesData]);
@@ -880,7 +915,8 @@ async function loadRange(range='today'){
 
     console.log('KICKORA RANGE OK', {range, count: matchesData.length});
   }catch(err){
-    showKickoraError('Errore caricamento periodo', err);
+    renderEmptyState('Errore nel caricamento del periodo selezionato');
+    console.error('Errore caricamento periodo', err);
   }
 }
 
