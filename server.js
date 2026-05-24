@@ -93,6 +93,24 @@ function normalizeFixture(row) {
   };
 }
 
+
+function estimateKickoraXG({ homeProb, awayProb, over15, over25, gg }) {
+  // Pseudo-xG proprietario Kickora.
+  // Non è xG ufficiale: è una stima derivata da probabilità goal, trend over e forza relativa.
+  const goalPressure = (over15 * 0.010) + (over25 * 0.012) + (gg * 0.006);
+  const homeEdge = Math.max(-0.25, Math.min(0.35, (homeProb - awayProb) / 120));
+  const awayEdge = Math.max(-0.25, Math.min(0.35, (awayProb - homeProb) / 140));
+
+  const xgHome = Math.max(0.45, Math.min(2.85, 0.55 + goalPressure + homeEdge));
+  const xgAway = Math.max(0.35, Math.min(2.45, 0.45 + goalPressure * 0.82 + awayEdge));
+
+  return {
+    xgH: Number(xgHome.toFixed(2)),
+    xgA: Number(xgAway.toFixed(2))
+  };
+}
+
+
 function bridgeKickoraModel(match) {
   const seed = (match.home.length * 7 + match.away.length * 5 + Number(match.external_id || 0)) % 28;
   const over15 = Math.min(92, 64 + seed);
@@ -101,6 +119,7 @@ function bridgeKickoraModel(match) {
   const homeProb = 40 + (match.home.length % 18);
   const awayProb = 24 + (match.away.length % 15);
   const drawProb = Math.max(18, 100 - homeProb - awayProb);
+  const estimatedXG = estimateKickoraXG({ homeProb, awayProb, over15, over25, gg });
 
   return {
     id: match.external_id,
@@ -111,8 +130,8 @@ function bridgeKickoraModel(match) {
     rank: "-",
     formH: "-",
     formA: "-",
-    xgH: 1.35,
-    xgA: 1.12,
+    xgH: estimatedXG.xgH,
+    xgA: estimatedXG.xgA,
     odds: { h: 0, d: 0, a: 0 },
     p: {
       h: homeProb,
@@ -151,7 +170,8 @@ function bridgeKickoraModel(match) {
     gg: gg >= 60 ? "GG" : "No Gol leggero",
     value: "Da calcolare con quota reale",
     risk: over15 >= 80 ? "Basso" : over15 >= 68 ? "Medio" : "Alto",
-    score: "-"
+    score: "-",
+    xgSource: "Kickora stimato"
   };
 }
 

@@ -359,6 +359,25 @@ button,select,input{font-family:inherit}
 }
 .empty-state b{display:block;color:var(--text);font-size:22px;margin-bottom:8px}
 
+
+.xg-manual-box{margin-top:16px;border:1px solid rgba(34,211,238,.30);background:linear-gradient(135deg,rgba(34,211,238,.09),rgba(139,92,246,.08));border-radius:24px;padding:16px}
+.xg-manual-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px}
+.xg-manual-title{font-size:20px;font-weight:950}
+.xg-manual-sub{color:var(--muted);font-size:13px;margin-top:4px}
+.xg-manual-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.xg-team-card{background:rgba(2,6,23,.46);border:1px solid var(--border);border-radius:18px;padding:14px}
+.xg-team-card h3{margin-bottom:12px}
+.xg-input-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.xg-field label{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:5px}
+.xg-field input{width:100%;box-sizing:border-box;background:rgba(15,23,42,.82);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:10px}
+.xg-results{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.xg-result-card{background:rgba(15,23,42,.58);border:1px solid var(--border);border-radius:18px;padding:14px;text-align:center}
+.xg-result-card span{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}
+.xg-result-card b{display:block;font-size:28px;margin-top:5px}
+.xg-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.xg-note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:10px}
+@media(max-width:950px){.xg-manual-grid,.xg-results{grid-template-columns:1fr}.xg-input-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -519,12 +538,12 @@ function buildProPanel(m){
                   `Match equilibrato: evitare esposizione eccessiva sul segno secco.`;
 
   return `<div class="pro-panel">
-    <h2>Modalità Esperto — Indicatori avanzati</h2>
+    <h2>Modalità Esperto — </h2>
     <div class="pro-grid">
-      <div class="pro-card"><span>xG Totali</span><b>${xgTotal}</b></div>
+      <div class="pro-card"><span>xG stimato Totali</span><b>${xgTotal}</b></div>
       <div class="pro-card"><span>Momentum Casa</span><b>${momentumH}</b></div>
       <div class="pro-card"><span>Momentum Trasferta</span><b>${momentumA}</b></div>
-      <div class="pro-card"><span>Pressione Corner</span><b>${pressure}</b></div>
+      <div class="pro-card"><span>Pressione </span><b>${pressure}</b></div>
       <div class="pro-card"><span>Volatilità Match</span><b>${volatility}</b></div>
       <div class="pro-card"><span>Edge Over</span><b>${m.p.over25 >= 60 ? 'Positivo' : 'Neutro'}</b></div>
       <div class="pro-card"><span>Edge GG</span><b>${m.p.gg >= 60 ? 'Positivo' : 'Neutro'}</b></div>
@@ -759,7 +778,7 @@ function buildAiAlerts(){
       return {m, sev:'hot', tag:'GG + GOAL TREND', text:`BTTS forte e Over 1.5 sopra l'80%. Scenario gara aperta con almeno un gol per parte plausibile.`};
     }
     if(m.p.cards35 >= 65){
-      return {m, sev:'watch', tag:'TENSIONE CARTELLINI', text:`Cartellini Over 3.5 sopra soglia. Match potenzialmente fisico o tatticamente bloccato.`};
+      return {m, sev:'watch', tag:'TENSIONE CARTELLINI', text:` Over 3.5 sopra soglia. Match potenzialmente fisico o tatticamente bloccato.`};
     }
     return null;
   }).filter(Boolean).slice(0,4);
@@ -830,8 +849,130 @@ function numberOrNA(v){
   return Number.isFinite(Number(v)) && Number(v) !== 0 ? Number(v).toFixed(2) : 'Non disponibile';
 }
 
+
+function defaultManualStats(m){
+  const baseHome = Number(m.xgH || 1.25);
+  const baseAway = Number(m.xgA || 1.05);
+
+  return {
+    homeShots: Math.max(6, Math.round(baseHome * 8)),
+    homeShotsOn: Math.max(2, Math.round(baseHome * 3.2)),
+    homeBig: Math.max(0, Math.round(baseHome * 1.1)),
+    homeBox: Math.max(8, Math.round(baseHome * 9)),
+    homeGoalsFor: baseHome.toFixed(1),
+    homeGoalsAgainst: Math.max(0.5, baseAway).toFixed(1),
+
+    awayShots: Math.max(5, Math.round(baseAway * 8)),
+    awayShotsOn: Math.max(1, Math.round(baseAway * 3)),
+    awayBig: Math.max(0, Math.round(baseAway * 1)),
+    awayBox: Math.max(6, Math.round(baseAway * 8)),
+    awayGoalsFor: baseAway.toFixed(1),
+    awayGoalsAgainst: Math.max(0.5, baseHome).toFixed(1)
+  };
+}
+
+function calcManualXG(prefix){
+  const val = id => Number((document.getElementById(prefix + id)?.value || 0).toString().replace(',','.'));
+  const shots = val('Shots');
+  const shotsOn = val('ShotsOn');
+  const big = val('Big');
+  const box = val('Box');
+  const gf = val('GoalsFor');
+  const ga = val('GoalsAgainst');
+
+  const xg =
+    (shots * 0.045) +
+    (shotsOn * 0.115) +
+    (big * 0.32) +
+    (box * 0.028) +
+    (gf * 0.22) +
+    (ga * 0.10);
+
+  return Math.max(0.15, Math.min(4.50, xg));
+}
+
+function updateManualXG(){
+  const home = calcManualXG('home');
+  const away = calcManualXG('away');
+  const total = home + away;
+  const over25 = Math.round(Math.max(18, Math.min(88, 28 + total * 18)));
+  const btts = Math.round(Math.max(20, Math.min(82, 30 + Math.min(home, away) * 28)));
+
+  if(el('manualHomeXG')) el('manualHomeXG').textContent = home.toFixed(2);
+  if(el('manualAwayXG')) el('manualAwayXG').textContent = away.toFixed(2);
+  if(el('manualTotalXG')) el('manualTotalXG').textContent = total.toFixed(2);
+  if(el('manualOver25')) el('manualOver25').textContent = over25 + '%';
+  if(el('manualBTTS')) el('manualBTTS').textContent = btts + '%';
+}
+
+function xgInput(prefix, id, label, value){
+  return `<div class="xg-field">
+    <label>${label}</label>
+    <input id="${prefix}${id}" type="number" step="0.1" value="${value}" oninput="updateManualXG()">
+  </div>`;
+}
+
+function buildManualXG(m){
+  const d = defaultManualStats(m);
+  setTimeout(updateManualXG, 0);
+
+  return `<div class="xg-manual-box">
+    <div class="xg-manual-head">
+      <div>
+        <div class="xg-manual-title">xG Stimato Kickora</div>
+        <div class="xg-manual-sub">Compila o modifica i dati manuali per stimare xG, Over 2.5 e BTTS sul match selezionato.</div>
+      </div>
+      <span class="chip cyan">CALCOLO MANUALE</span>
+    </div>
+
+    <div class="xg-manual-grid">
+      <div class="xg-team-card">
+        <h3>${m.home}</h3>
+        <div class="xg-input-grid">
+          ${xgInput('home','Shots','Tiri medi',d.homeShots)}
+          ${xgInput('home','ShotsOn','Tiri in porta',d.homeShotsOn)}
+          ${xgInput('home','Big','Grandi occasioni',d.homeBig)}
+          ${xgInput('home','Box','Tocchi in area',d.homeBox)}
+          ${xgInput('home','GoalsFor','Gol fatti media',d.homeGoalsFor)}
+          ${xgInput('home','GoalsAgainst','Gol subiti avversario',d.homeGoalsAgainst)}
+        </div>
+      </div>
+
+      <div class="xg-team-card">
+        <h3>${m.away}</h3>
+        <div class="xg-input-grid">
+          ${xgInput('away','Shots','Tiri medi',d.awayShots)}
+          ${xgInput('away','ShotsOn','Tiri in porta',d.awayShotsOn)}
+          ${xgInput('away','Big','Grandi occasioni',d.awayBig)}
+          ${xgInput('away','Box','Tocchi in area',d.awayBox)}
+          ${xgInput('away','GoalsFor','Gol fatti media',d.awayGoalsFor)}
+          ${xgInput('away','GoalsAgainst','Gol subiti avversario',d.awayGoalsAgainst)}
+        </div>
+      </div>
+    </div>
+
+    <div class="xg-results">
+      <div class="xg-result-card"><span>xG ${m.home}</span><b id="manualHomeXG">-</b></div>
+      <div class="xg-result-card"><span>xG ${m.away}</span><b id="manualAwayXG">-</b></div>
+      <div class="xg-result-card"><span>xG Totale</span><b id="manualTotalXG">-</b></div>
+      <div class="xg-result-card"><span>Stima Over 2.5</span><b id="manualOver25">-</b></div>
+      <div class="xg-result-card"><span>Stima BTTS</span><b id="manualBTTS">-</b></div>
+      <div class="xg-result-card"><span>Fonte</span><b>Kickora</b></div>
+    </div>
+
+    <div class="xg-actions">
+      <button class="btn secondary tiny" onclick="updateManualXG()">Ricalcola xG</button>
+    </div>
+
+    <div class="xg-note">
+      Formula stimata Kickora: tiri, tiri in porta, grandi occasioni, tocchi in area, gol fatti e gol subiti.
+      Non è xG ufficiale Opta/StatsBomb: è un indicatore proprietario operativo.
+    </div>
+  </div>`;
+}
+
 function renderAnalysis(){
-  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div class="sections"><div class="box"><h3>Analisi tempi</h3><div class="list"><div class="row"><span>Over 0.5 PT</span><b>${marketPercent(m,'pt05')}</b></div><div class="row"><span>Over 1.5 PT</span><b>${marketPercent(m,'pt15')}</b></div><div class="row"><span>BTTS 1° tempo</span><b>${marketPercent(m,'btts1')}</b></div><div class="row"><span>Over 0.5 ST</span><b>${marketPercent(m,'st05')}</b></div><div class="row"><span>Over 1.5 ST</span><b>${marketPercent(m,'st15')}</b></div><div class="row"><span>BTTS 2° tempo</span><b>${marketPercent(m,'btts2')}</b></div></div></div><div class="box"><h3>Corner</h3><div class="list"><div class="row"><span>Over 7.5</span><b>${marketPercent(m,'corners75')}</b></div><div class="row"><span>Over 8.5</span><b>${marketPercent(m,'corners85')}</b></div><div class="row"><span>Under 10.5</span><b>${marketPercent(m,'u105')}</b></div><div class="row"><span>Under 11.5</span><b>${marketPercent(m,'u115')}</b></div><div class="row"><span>Under 12.5</span><b>${marketPercent(m,'u125')}</b></div></div></div><div class="box"><h3>Cartellini</h3><div class="list"><div class="row"><span>Over 2.5</span><b>${marketPercent(m,'cards25')}</b></div><div class="row"><span>Over 3.5</span><b>${marketPercent(m,'cards35')}</b></div><div class="row"><span>Under 5.5</span><b>${marketPercent(m,'u55')}</b></div><div class="row"><span>Under 6.5</span><b>${marketPercent(m,'u65')}</b></div><div class="row"><span>Under 7.5</span><b>${marketPercent(m,'u75')}</b></div></div></div><div class="box"><h3>Indicatori avanzati</h3><p class="note" style="margin:0 0 8px 0">Dati disponibili solo quando forniti dalla fonte API.</p><div class="list"><div class="row"><span>xG ${m.home}</span><b>${m.isLiveApi ? 'Non disponibile' : numberOrNA(m.xgH)}</b></div><div class="row"><span>xG ${m.away}</span><b>${m.isLiveApi ? 'Non disponibile' : numberOrNA(m.xgA)}</b></div><div class="row"><span>Forma ${m.home}</span><b>${m.isLiveApi ? 'Non disponibile' : available(m.formH)}</b></div><div class="row"><span>Forma ${m.away}</span><b>${m.isLiveApi ? 'Non disponibile' : available(m.formA)}</b></div></div></div></div><div class="verdict"><h2>Conclusione finale</h2><p>La giocata più equilibrata è <b>${m.safe}</b>. Il colpo valore suggerito è <b>${m.value}</b>, da usare solo se la quota reale mantiene margine rispetto alla probabilità stimata.</p><div class="picks"><div class="pick"><small>SAFE PICK</small><strong>${m.safe}</strong></div><div class="pick"><small>SEGNO FISSO</small><strong>${m.segno}</strong></div><div class="pick"><small>OVER</small><strong>${m.over}</strong></div><div class="pick"><small>COLPO VALORE</small><strong>${m.value}</strong></div></div><p class="note">Demo: percentuali simulate e realistiche, non collegate a quote/live API. Il layout è già pronto per API-Football o altra sorgente.</p></div>`}
+  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}</div></div>`}
 
 
 function showKickoraError(msg, err=null){
@@ -1045,8 +1186,8 @@ function normalizeKickoraLiveMatch(m, idx){
     rank: m.rank || '-',
     formH: m.formH || '-',
     formA: m.formA || '-',
-    xgH: safeNumber(m.xgH, 1.35),
-    xgA: safeNumber(m.xgA, 1.12),
+    xgH: safeNumber(m.xgH, 0),
+    xgA: safeNumber(m.xgA, 0),
     odds: m.odds || {h:0,d:0,a:0},
     p: {
       h: safeNumber(p.h, 40),
@@ -1086,7 +1227,8 @@ function normalizeKickoraLiveMatch(m, idx){
     value: m.value || 'Da valutare',
     risk: m.risk || 'Medio',
     score: m.score || '-',
-    isLiveApi: true
+    isLiveApi: true,
+    xgSource: m.xgSource || 'Kickora stimato'
   };
 }
 
