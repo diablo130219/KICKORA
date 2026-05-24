@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kickora Stats — Demo</title>
+<style>
+:root{
+  --bg:#050812;--bg2:#0b1020;--card:rgba(17,24,39,.78);--card2:rgba(30,41,59,.72);--border:rgba(148,163,184,.18);
+  --text:#eef2ff;--muted:#94a3b8;--cyan:#22d3ee;--pink:#f472b6;--violet:#8b5cf6;--green:#22c55e;--red:#ef4444;--yellow:#facc15;--orange:#fb923c;
+  --shadow:0 24px 80px rgba(0,0,0,.45);--r:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at top left,rgba(34,211,238,.18),transparent 34%),radial-gradient(circle at top right,rgba(244,114,182,.16),transparent 28%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);min-height:100vh;padding:22px}.app{max-width:1280px;margin:0 auto}.hero{border:1px solid var(--border);background:linear-gradient(135deg,rgba(15,23,42,.9),rgba(2,6,23,.76));box-shadow:var(--shadow);border-radius:30px;padding:28px;position:relative;overflow:hidden;margin-bottom:20px}.hero:before{content:"";position:absolute;inset:-120px;background:conic-gradient(from 180deg,transparent,rgba(34,211,238,.17),transparent,rgba(244,114,182,.14),transparent);animation:spin 12s linear infinite}.hero>*{position:relative}.brand{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.logo{font-size:32px;font-weight:950;letter-spacing:-.04em}.logo span{background:linear-gradient(90deg,var(--cyan),var(--pink));-webkit-background-clip:text;color:transparent}.tag{color:var(--muted);margin-top:5px}.badge{border:1px solid rgba(34,211,238,.35);background:rgba(34,211,238,.08);color:var(--cyan);padding:9px 14px;border-radius:999px;font-weight:800;font-size:13px}.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:22px}.kpi-card{background:rgba(15,23,42,.7);border:1px solid var(--border);border-radius:18px;padding:16px}.kpi-card strong{font-size:25px;display:block}.kpi-card small{color:var(--muted)}.layout{display:grid;grid-template-columns:360px 1fr;gap:18px}.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;backdrop-filter:blur(16px)}.panel h2{font-size:17px;margin-bottom:13px}.controls{display:grid;gap:12px}.control label{display:block;color:var(--muted);font-size:12px;font-weight:800;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}select,input{width:100%;border:1px solid var(--border);background:#070b16;color:var(--text);border-radius:14px;padding:12px 13px;outline:none}select:focus,input:focus{border-color:rgba(34,211,238,.75);box-shadow:0 0 0 3px rgba(34,211,238,.12)}.btn{border:0;border-radius:15px;padding:13px 16px;font-weight:950;cursor:pointer;color:white;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--pink));box-shadow:0 12px 30px rgba(139,92,246,.25)}.btn.secondary{background:rgba(148,163,184,.12);border:1px solid var(--border);box-shadow:none}.matches{display:grid;gap:12px}.match{border:1px solid var(--border);background:rgba(15,23,42,.62);border-radius:19px;padding:15px;cursor:pointer;transition:.2s}.match:hover,.match.active{transform:translateY(-4px) scale(1.01);border-color:rgba(34,211,238,.82);box-shadow:0 0 45px rgba(34,211,238,.18);transition:.35s all ease}.match-top{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px}.teams{font-size:18px;font-weight:950;margin:9px 0}.chips{display:flex;gap:7px;flex-wrap:wrap}.chip{font-size:12px;border-radius:999px;padding:5px 9px;font-weight:850;background:rgba(148,163,184,.13);color:var(--muted)}.chip.good{background:rgba(34,197,94,.13);color:var(--green)}.chip.hot{background:rgba(244,114,182,.14);color:var(--pink)}.chip.cyan{background:rgba(34,211,238,.13);color:var(--cyan)}.analysis-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}.title h1{font-size:30px;letter-spacing:-.04em}.title p{color:var(--muted)}.risk{padding:11px 14px;border-radius:16px;font-weight:950}.risk.low{background:rgba(34,197,94,.13);color:var(--green)}.risk.med{background:rgba(250,204,21,.13);color:var(--yellow)}.risk.high{background:rgba(239,68,68,.13);color:var(--red)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}.stat{background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:15px}.stat .lab{color:var(--muted);font-size:12px;font-weight:800}.stat .val{font-size:26px;font-weight:950;margin-top:4px;text-shadow:0 0 18px rgba(34,211,238,.25)}.bars{display:grid;gap:10px;margin-top:16px}.bar{background:rgba(148,163,184,.12);border-radius:999px;overflow:hidden;border:1px solid var(--border)}.fill{height:31px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:13px;font-weight:950;min-width:54px;background:linear-gradient(90deg,var(--cyan),var(--violet))}.sections{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.box{background:rgba(15,23,42,.58);border:1px solid var(--border);border-radius:20px;padding:16px}.box h3{font-size:15px;margin-bottom:9px}.list{display:grid;gap:8px;color:#dbeafe;font-size:14px}.row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(148,163,184,.12);padding-bottom:7px}.verdict{margin-top:16px;border-radius:24px;padding:18px;border:1px solid rgba(34,211,238,.35);background:linear-gradient(135deg,rgba(34,211,238,.12),rgba(244,114,182,.10))}.picks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:13px}.pick{border:1px solid var(--border);background:rgba(2,6,23,.42);border-radius:18px;padding:14px}.pick small{color:var(--muted);font-weight:850}.pick strong{display:block;font-size:18px;margin-top:4px}.note{color:var(--muted);font-size:13px;margin-top:12px}.hidden{display:none}@keyframes spin{to{transform:rotate(1turn)}}@media(max-width:950px){.layout{grid-template-columns:1fr}.kpi,.grid,.picks,.sections{grid-template-columns:1fr 1fr}}@media(max-width:620px){body{padding:12px}.kpi,.grid,.picks,.sections{grid-template-columns:1fr}.title h1{font-size:23px}}
+
+.result-fx{animation:fadeKick .55s ease}
+@keyframes fadeKick{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:translateY(0)}}
+
+.score-ring{width:78px;height:78px;border-radius:999px;display:grid;place-items:center;background:conic-gradient(var(--cyan) calc(var(--score)*1%),rgba(148,163,184,.14) 0);box-shadow:0 0 28px rgba(34,211,238,.20);position:relative}
+.score-ring:before{content:"";position:absolute;inset:7px;border-radius:999px;background:#070b16;border:1px solid var(--border)}
+.score-ring b{position:relative;font-size:22px}
+.score-label{font-size:11px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.08em;text-align:center;margin-top:5px}
+.top-picks{margin-top:16px;border:1px solid rgba(34,211,238,.28);background:linear-gradient(135deg,rgba(34,211,238,.10),rgba(139,92,246,.09));border-radius:24px;padding:16px}
+.top-picks h2{margin-bottom:10px}
+.top-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.top-card{background:rgba(2,6,23,.46);border:1px solid var(--border);border-radius:18px;padding:14px;cursor:pointer;transition:.25s}
+.top-card:hover{transform:translateY(-3px);border-color:rgba(244,114,182,.55);box-shadow:0 0 30px rgba(244,114,182,.12)}
+.top-card small{display:block;color:var(--muted);font-weight:850;margin-bottom:4px}
+.top-card strong{font-size:16px}
+.top-card .top-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.elite{color:var(--cyan)}.premium{color:var(--pink)}.goodscore{color:var(--green)}.riskscore{color:var(--yellow)}
+.filter-feedback{margin-top:12px;color:var(--muted);font-size:13px;border:1px solid var(--border);background:rgba(148,163,184,.08);padding:10px 12px;border-radius:14px}
+@media(max-width:950px){.top-grid{grid-template-columns:1fr}}
+
+.api-panel{margin-top:16px;border:1px solid rgba(139,92,246,.30);background:linear-gradient(135deg,rgba(139,92,246,.10),rgba(34,211,238,.07));border-radius:22px;padding:16px}
+.api-panel h2{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.api-status{font-size:12px;font-weight:950;padding:7px 10px;border-radius:999px;border:1px solid rgba(34,211,238,.28);color:var(--cyan);background:rgba(34,211,238,.08)}
+.api-status.demo{border-color:rgba(250,204,21,.28);color:var(--yellow);background:rgba(250,204,21,.08)}
+.api-status.ready{border-color:rgba(34,197,94,.28);color:var(--green);background:rgba(34,197,94,.08)}
+.api-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+.api-help{font-size:12px;color:var(--muted);line-height:1.45;margin-top:9px}
+.source-dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--yellow);box-shadow:0 0 12px rgba(250,204,21,.7);margin-right:6px}
+.source-dot.ready{background:var(--green);box-shadow:0 0 12px rgba(34,197,94,.7)}
+.toast{position:fixed;right:22px;bottom:22px;z-index:99;border:1px solid rgba(34,211,238,.35);background:rgba(2,6,23,.92);backdrop-filter:blur(14px);color:var(--text);border-radius:18px;padding:13px 15px;box-shadow:var(--shadow);font-size:13px;opacity:0;transform:translateY(10px);pointer-events:none;transition:.28s}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.api-counter{margin-top:16px;border:1px solid rgba(34,197,94,.25);background:linear-gradient(135deg,rgba(34,197,94,.09),rgba(34,211,238,.07));border-radius:22px;padding:16px;overflow:hidden}
+.api-counter-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.api-counter-title{font-weight:950;font-size:16px}
+.api-counter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.api-counter-card{background:rgba(2,6,23,.42);border:1px solid var(--border);border-radius:16px;padding:12px 8px;text-align:center;min-width:0}
+.api-counter-card span{display:block;color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;line-height:1.15;word-break:normal}
+.api-counter-card b{display:block;font-size:22px;margin-top:5px;line-height:1.05;white-space:normal;overflow-wrap:anywhere}
+.api-counter-card.compact b{font-size:20px}
+.api-progress{height:14px;border-radius:999px;background:rgba(148,163,184,.12);border:1px solid var(--border);overflow:hidden;margin-top:12px;width:100%}
+.api-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--cyan),var(--pink));box-shadow:0 0 18px rgba(34,211,238,.25);transition:.35s}
+.api-counter-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;width:100%}
+.api-counter-actions .btn:last-child{grid-column:1 / -1}
+.btn.tiny{padding:10px 9px;border-radius:12px;font-size:12px;white-space:normal}
+@media(max-width:950px){.api-counter-grid{grid-template-columns:1fr 1fr}}@media(max-width:420px){.api-counter-grid,.api-counter-actions{grid-template-columns:1fr}}
+
+.terminal-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0 20px}
+.term-card{background:rgba(2,6,23,.55);border:1px solid var(--border);border-radius:16px;padding:12px 14px;box-shadow:0 0 18px rgba(34,211,238,.06)}
+.term-label{font-size:10px;color:var(--muted);font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.term-value{margin-top:4px;font-size:15px;font-weight:950}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--green);box-shadow:0 0 12px rgba(34,197,94,.8);margin-right:7px}
+.engine-title{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.engine-main{font-size:34px;font-weight:1000;letter-spacing:-.04em}
+.engine-sub{font-size:13px;color:var(--muted);margin-top:4px}
+@media(max-width:950px){.terminal-bar{grid-template-columns:1fr 1fr}}@media(max-width:620px){.terminal-bar{grid-template-columns:1fr}}
+
+.heatmap-wrap{margin-top:12px}
+.heatmap-bar{height:10px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden;border:1px solid var(--border)}
+.heatmap-fill{height:100%;border-radius:999px;box-shadow:0 0 18px currentColor}
+.heatmap-label{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;font-weight:900}
+.hm-strong{color:var(--green)}
+.hm-medium{color:var(--yellow)}
+.hm-risk{color:#ef4444}
+
+.ai-alerts{margin-top:16px;border:1px solid rgba(250,204,21,.28);background:linear-gradient(135deg,rgba(250,204,21,.10),rgba(244,114,182,.08));border-radius:24px;padding:16px}
+.ai-alerts h2{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ai-alert-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
+.ai-alert{background:rgba(2,6,23,.48);border:1px solid var(--border);border-radius:18px;padding:14px}
+.ai-alert small{display:block;color:var(--muted);font-weight:850;margin-bottom:5px}
+.ai-alert strong{font-size:15px}
+.ai-alert p{color:#dbeafe;font-size:13px;margin-top:7px;line-height:1.45}
+.ai-sev{display:inline-block;margin-top:10px;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:950}
+.ai-sev.hot{background:rgba(244,114,182,.15);color:var(--pink)}
+.ai-sev.safe{background:rgba(34,197,94,.14);color:var(--green)}
+.ai-sev.watch{background:rgba(250,204,21,.14);color:var(--yellow)}
+@media(max-width:950px){.ai-alert-grid{grid-template-columns:1fr}}
+
+.simulator{margin-top:16px;border:1px solid rgba(34,211,238,.30);background:linear-gradient(135deg,rgba(34,211,238,.10),rgba(139,92,246,.09));border-radius:24px;padding:16px}
+.sim-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sim-title{font-size:18px;font-weight:950}
+.sim-sub{color:var(--muted);font-size:13px;margin-top:3px}
+.sim-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+.sim-score-list{display:grid;gap:10px}
+.sim-score-row{background:rgba(2,6,23,.45);border:1px solid var(--border);border-radius:16px;padding:12px}
+.sim-score-top{display:flex;justify-content:space-between;gap:10px;font-weight:950}
+.sim-score-bar{height:9px;margin-top:8px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden}
+.sim-score-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--pink));border-radius:999px;box-shadow:0 0 18px rgba(34,211,238,.22)}
+.sim-scenarios{display:grid;gap:10px}
+.sim-scenario{background:rgba(15,23,42,.55);border:1px solid var(--border);border-radius:16px;padding:13px}
+.sim-scenario span{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}
+.sim-scenario b{display:block;font-size:22px;margin-top:4px}
+@media(max-width:950px){.sim-grid{grid-template-columns:1fr}}
+
+.mode-toggle{display:flex;gap:8px;background:rgba(2,6,23,.45);border:1px solid var(--border);border-radius:16px;padding:6px}
+.mode-btn{border:0;background:transparent;color:var(--muted);font-weight:950;padding:9px 12px;border-radius:12px;cursor:pointer}
+.mode-btn.active{background:linear-gradient(90deg,var(--cyan),var(--violet));color:white;box-shadow:0 0 20px rgba(34,211,238,.18)}
+.pro-panel{margin-top:16px;border:1px solid rgba(244,114,182,.28);background:linear-gradient(135deg,rgba(244,114,182,.10),rgba(34,211,238,.07));border-radius:24px;padding:16px}
+.pro-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+.pro-card{background:rgba(2,6,23,.48);border:1px solid var(--border);border-radius:18px;padding:14px}
+.pro-card span{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.pro-card b{display:block;font-size:22px;margin-top:5px}
+.pro-read{margin-top:12px;color:#dbeafe;font-size:13px;line-height:1.5}
+@media(max-width:950px){.pro-grid{grid-template-columns:1fr 1fr}}@media(max-width:620px){.pro-grid{grid-template-columns:1fr}}
+
+.radar-box{margin-top:16px;border:1px solid rgba(34,211,238,.28);background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(139,92,246,.08));border-radius:24px;padding:16px}
+.radar-wrap{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:center}
+.radar-svg{width:100%;height:420px}
+.radar-legend{display:grid;gap:10px}
+.legend-card{background:rgba(2,6,23,.45);border:1px solid var(--border);border-radius:16px;padding:12px}
+.legend-dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:8px}
+@media(max-width:950px){.radar-wrap{grid-template-columns:1fr}}
+
+.match-timeline{margin-top:16px;border:1px solid rgba(244,114,182,.28);background:linear-gradient(135deg,rgba(244,114,182,.09),rgba(34,211,238,.07));border-radius:24px;padding:16px}
+.timeline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.timeline-title{font-size:18px;font-weight:950}
+.timeline-sub{color:var(--muted);font-size:13px;margin-top:3px}
+.timeline-track{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.timeline-track:before{content:"";position:absolute;left:5%;right:5%;top:21px;height:2px;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--pink));opacity:.45}
+.timeline-step{position:relative;background:rgba(2,6,23,.48);border:1px solid var(--border);border-radius:18px;padding:14px;min-height:138px}
+.timeline-dot{width:16px;height:16px;border-radius:999px;background:var(--cyan);box-shadow:0 0 18px rgba(34,211,238,.65);margin-bottom:12px;position:relative;z-index:2}
+.timeline-step:nth-child(2) .timeline-dot{background:var(--violet)}
+.timeline-step:nth-child(3) .timeline-dot{background:var(--pink)}
+.timeline-step:nth-child(4) .timeline-dot{background:var(--yellow)}
+.timeline-step:nth-child(5) .timeline-dot{background:var(--green)}
+.timeline-time{font-size:12px;font-weight:950;color:var(--muted);margin-bottom:6px}
+.timeline-event{font-size:15px;font-weight:950;margin-bottom:7px}
+.timeline-desc{font-size:12px;color:#dbeafe;line-height:1.45}
+.timeline-intensity{margin-top:10px;height:7px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden}
+.timeline-intensity span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cyan),var(--pink))}
+@media(max-width:950px){.timeline-track{grid-template-columns:1fr}.timeline-track:before{display:none}.timeline-step{min-height:auto}}
+
+body:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(34,211,238,.12),transparent 18%),
+    radial-gradient(circle at 88% 14%,rgba(244,114,182,.10),transparent 16%),
+    radial-gradient(circle at 50% 90%,rgba(139,92,246,.10),transparent 24%);
+  animation:ambientGlow 9s ease-in-out infinite alternate;
+  z-index:-2;
+}
+body:after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    radial-gradient(rgba(255,255,255,.16) 1px,transparent 1px),
+    radial-gradient(rgba(34,211,238,.12) 1px,transparent 1px);
+  background-size:42px 42px,72px 72px;
+  opacity:.18;
+  animation:particlesMove 18s linear infinite;
+  z-index:-1;
+}
+@keyframes ambientGlow{from{filter:hue-rotate(0deg) brightness(1)}to{filter:hue-rotate(18deg) brightness(1.12)}}
+@keyframes particlesMove{from{background-position:0 0,0 0}to{background-position:160px 120px,-120px 160px}}
+
+.panel,.hero,.match,.stat,.box,.top-card,.ai-alert,.simulator,.radar-box,.match-timeline,.pro-panel{
+  backdrop-filter:blur(22px) saturate(1.18);
+}
+.panel{
+  box-shadow:0 28px 90px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.hero{
+  box-shadow:0 30px 100px rgba(0,0,0,.58),0 0 55px rgba(34,211,238,.10), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.match{
+  position:relative;
+  overflow:hidden;
+}
+.match:before{
+  content:"";
+  position:absolute;
+  inset:-1px;
+  background:linear-gradient(120deg,transparent,rgba(34,211,238,.12),transparent);
+  transform:translateX(-120%);
+  transition:.55s;
+}
+.match:hover:before,.match.active:before{
+  transform:translateX(120%);
+}
+.match.active{
+  border-color:rgba(34,211,238,.95)!important;
+  box-shadow:0 0 42px rgba(34,211,238,.20), inset 0 0 28px rgba(34,211,238,.05)!important;
+}
+.btn,
+.btn:after,
+.btn:hover:after,
+.stat,.term-card,.legend-card,.pro-card,.timeline-step,.sim-score-row,.sim-scenario{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 35px rgba(0,0,0,.22);
+}
+.fill,.heatmap-fill,.sim-score-fill,.timeline-intensity span{
+  animation:softPulse 2.4s ease-in-out infinite alternate;
+}
+@keyframes softPulse{from{filter:brightness(1)}to{filter:brightness(1.18)}}
+
+@media(max-width:950px){}
+
+@media(max-width:1100px){}
+
+@keyframes consolePulse{from{opacity:.86}to{opacity:1}}
+@media(max-width:1100px){}@media(max-width:620px){}
+
+.match,.stat,.box,.hero,.timeline-step,.legend-card,.pro-card{
+ transition:all .35s cubic-bezier(.22,1,.36,1);
+}
+.match:hover,.stat:hover,.box:hover{
+ transform:translateY(-4px) scale(1.01);
+ box-shadow:0 18px 40px rgba(34,211,238,.12);
+}
+.value-animate{
+ animation:fadeUp .7s ease;
+}
+@keyframes fadeUp{
+ from{opacity:.2;transform:translateY(8px)}
+ to{opacity:1;transform:translateY(0)}
+}
+.skeleton{
+ background:linear-gradient(90deg,rgba(148,163,184,.08),rgba(255,255,255,.10),rgba(148,163,184,.08));
+ background-size:200% 100%;
+ animation:shimmer 1.8s infinite;
+}
+@keyframes shimmer{
+ 0%{background-position:200% 0}
+ 100%{background-position:-200% 0}
+}
+.btn,.chip{
+ transition:all .25s ease;
+}
+.btn:hover{
+ transform:translateY(-2px);
+ filter:brightness(1.08);
+}
+
+
+/* FINAL CLEANUP */
+*{scrollbar-width:thin;scrollbar-color:rgba(34,211,238,.35) rgba(2,6,23,.35)}
+button,select,input{font-family:inherit}
+.match,.stat,.box,.timeline-step,.legend-card,.pro-card,.sim-score-row,.sim-scenario,.top-card,.ai-alert{
+  will-change:transform;
+}
+.match:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible{
+  outline:2px solid rgba(34,211,238,.75);
+  outline-offset:2px;
+}
+.final-version-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid rgba(34,211,238,.30);
+  color:var(--cyan);
+  background:rgba(34,211,238,.08);
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:950;
+}
+
+
+.performance-box{margin-top:16px;border:1px solid rgba(34,211,238,.28);background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(139,92,246,.08));border-radius:24px;padding:16px}
+.perf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.perf-card{background:rgba(2,6,23,.45);border:1px solid var(--border);border-radius:18px;padding:14px}
+.perf-card span{display:block;color:var(--muted);font-size:11px}
+.perf-card b{font-size:24px}
+.perf-table{margin-top:14px;display:grid;gap:8px}
+.perf-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;background:rgba(2,6,23,.4);padding:10px;border-radius:14px}
+@media(max-width:950px){.perf-grid{grid-template-columns:1fr 1fr}.perf-row{grid-template-columns:1fr}}
+
+
+.api-real-panel{margin-top:16px;border:1px solid rgba(34,197,94,.26);background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(34,211,238,.07));border-radius:24px;padding:16px}
+.api-real-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.api-real-card{background:rgba(2,6,23,.45);border:1px solid var(--border);border-radius:18px;padding:14px}
+.api-real-card span{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.api-real-card b{display:block;font-size:20px;margin-top:4px}
+@media(max-width:950px){.api-real-grid{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="hero">
+    <div class="brand">
+      <div><div class="logo">KICKORA <span>STATS</span></div><p class="tag">Demo statistica sportiva · dati simulati realistici · zero consumo API</p></div>
+      <div class="badge">DEMO MODE · API READY</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-card"><strong id="kpiMatches">0</strong><small>Partite demo</small></div>
+      <div class="kpi-card"><strong id="kpiSafe">0</strong><small>Giocate SAFE</small></div>
+      <div class="kpi-card"><strong id="kpiValue">0</strong><small>Colpi valore</small></div>
+      <div class="kpi-card"><strong id="kpiAvg">0%</strong><small>Media Over 1.5</small></div>
+    </div>
+  </section>
+
+  <main class="layout">
+    <aside class="panel">
+      <h2>Filtri operativi</h2>
+      <div class="controls">
+        <div class="control"><label>Mercato</label><select id="market"><option value="all">Tutti</option><option value="segno">Segno fisso</option><option value="over15">Over 1.5</option><option value="over25">Over 2.5</option><option value="gg">GG</option><option value="value">Colpo valore</option></select></div>
+        <div class="control"><label>Campionato</label><select id="competitionFilter"><option value="all">Tutti i campionati</option></select></div>
+        <div class="control"><label>Rischio</label><select id="risk"><option value="all">Tutti</option><option value="Basso">Basso</option><option value="Medio">Medio</option><option value="Alto">Alto</option></select></div>
+        <div class="control"><label>Ordina per</label><select id="sortBy"><option value="score">Kickora Score</option><option value="prob">Probabilità filtro</option><option value="time">Orario</option><option value="risk">Rischio</option></select></div>
+        <div class="control"><label>Probabilità minima</label><input id="minProb" type="number" min="0" max="100" value="60"></div>
+        <button class="btn" onclick="applyFilters()">Applica filtri</button>
+        <button class="btn secondary" onclick="resetFilters()">Reset</button>
+        <div class="filter-feedback" id="filterFeedback">Motore demo pronto.</div>
+      </div>
+      
+      <div class="api-panel">
+        <h2>Modalità dati <span class="api-status demo" id="apiStatus"><span class="source-dot" id="sourceDot"></span>DEMO</span></h2>
+        <div class="api-grid">
+          <div class="control">
+            <label>Sorgente dati</label>
+            <select id="dataSource">
+              <option value="demo">Demo locale</option>
+              <option value="api-football">API-Football ready</option>
+              <option value="football-data">Football-data.org ready</option>
+              <option value="thesportsdb">TheSportsDB ready</option>
+            </select>
+          </div>
+          <div class="control">
+            <label>API key / token</label>
+            <input id="apiKey" type="password" placeholder="Lascia vuoto in demo">
+          </div>
+          <button class="btn secondary" onclick="testApiMode()">Test modalità dati</button>
+        </div>
+        <p class="api-help">In demo non viene effettuata nessuna chiamata esterna. Quando inseriremo l'API reale, questa sezione userà la chiave per caricare partite, statistiche e quote.</p>
+      </div>
+
+      <div class="api-counter">
+        <div class="api-counter-head">
+          <div>
+            <div class="api-counter-title">Contatore consumi API</div>
+            <p class="api-help" style="margin-top:3px">Limite mensile impostato: 500 chiamate. In demo resta a zero.</p>
+          </div>
+          <span class="api-status demo" id="apiCounterStatus">ZERO CONSUMI</span>
+        </div>
+        <div class="api-counter-grid">
+          <div class="api-counter-card compact"><span>Mese corrente</span><b id="apiMonthLabel">-</b></div>
+          <div class="api-counter-card"><span>Usate</span><b id="apiCallsUsed">0</b></div>
+          <div class="api-counter-card"><span>Rimanenti</span><b id="apiCallsLeft">500</b></div>
+          <div class="api-counter-card compact"><span>Consumo</span><b id="apiUsagePct">0%</b></div>
+        </div>
+        <div class="api-progress"><div class="api-progress-fill" id="apiProgressFill"></div></div>
+        <div class="api-counter-actions">
+          <button class="btn secondary tiny" onclick="simulateApiCall()">Simula 1 chiamata</button>
+          <button class="btn secondary tiny" onclick="simulateApiCall(10)">Simula 10 chiamate</button>
+          <button class="btn secondary tiny" onclick="resetApiCounter()">Reset mese</button>
+        </div>
+      </div>
+
+      <h2 style="margin-top:20px">Partite</h2>
+      <div class="matches" id="matches"></div>
+      <p class="note">I dati sono demo ma strutturati come se arrivassero da una API. Quando avrai la chiave API, sostituiremo solo la sorgente dati.</p>
+    </aside>
+
+    <section class="panel result-fx"><div class="top-picks" id="topPicks"></div><div class="ai-alerts" id="aiAlerts"></div><div id="analysis"></div></section>
+  </main>
+</div>
+
+<script>
+const matchesData = [
+ {id:1,comp:'Serie A',time:'20:45',home:'Juventus',away:'Milan',rank:'3ª vs 5ª',formH:'V,V,N,V,P',formA:'V,N,V,P,V',xgH:1.72,xgA:1.28,odds:{h:2.10,d:3.30,a:3.55},p:{h:46,x:28,a:26,dc1x:74,dcx2:54,over05:92,over15:76,over25:54,over35:29,u25:46,u35:71,gg:58,ng:42,pt05:69,pt15:27,st05:78,st15:43,btts1:16,btts2:24,corners75:73,corners85:61,u105:58,u115:71,u125:82,cards25:77,cards35:59,u55:64,u65:76,u75:86},safe:'1X + Over 1.5',segno:'1X',over:'Over 1.5',gg:'GG leggero',value:'Over 2.5 se quota alta',risk:'Medio',score:'1-1 / 2-1'},
+ {id:2,comp:'Premier League',time:'18:30',home:'Arsenal',away:'Brighton',rank:'2ª vs 8ª',formH:'V,V,V,N,V',formA:'P,V,N,V,P',xgH:2.05,xgA:1.37,odds:{h:1.62,d:4.10,a:5.10},p:{h:59,x:23,a:18,dc1x:82,dcx2:41,over05:96,over15:84,over25:63,over35:37,u25:37,u35:63,gg:61,ng:39,pt05:74,pt15:34,st05:82,st15:51,btts1:19,btts2:29,corners75:79,corners85:68,u105:52,u115:65,u125:78,cards25:64,cards35:45,u55:75,u65:85,u75:92},safe:'Over 1.5',segno:'1',over:'Over 2.5',gg:'GG',value:'1 + Over 1.5',risk:'Basso',score:'2-1 / 2-0'},
+ {id:3,comp:'Liga',time:'21:00',home:'Real Sociedad',away:'Valencia',rank:'6ª vs 10ª',formH:'N,V,P,V,N',formA:'P,N,V,N,P',xgH:1.38,xgA:1.02,odds:{h:1.88,d:3.25,a:4.70},p:{h:51,x:30,a:19,dc1x:81,dcx2:49,over05:89,over15:68,over25:42,over35:21,u25:58,u35:79,gg:47,ng:53,pt05:61,pt15:20,st05:72,st15:34,btts1:11,btts2:18,corners75:66,corners85:54,u105:64,u115:76,u125:86,cards25:82,cards35:67,u55:53,u65:68,u75:81},safe:'1X',segno:'1X',over:'Over 1.5 prudente',gg:'No Gol leggero',value:'Under 3.5',risk:'Basso',score:'1-0 / 1-1'},
+ {id:4,comp:'Bundesliga',time:'15:30',home:'Dortmund',away:'Leverkusen',rank:'4ª vs 1ª',formH:'V,P,V,V,N',formA:'V,V,V,N,V',xgH:1.84,xgA:1.91,odds:{h:2.65,d:3.80,a:2.35},p:{h:34,x:25,a:41,dc1x:59,dcx2:66,over05:97,over15:86,over25:69,over35:44,u25:31,u35:56,gg:69,ng:31,pt05:78,pt15:39,st05:84,st15:57,btts1:22,btts2:34,corners75:81,corners85:70,u105:49,u115:62,u125:75,cards25:70,cards35:51,u55:69,u65:80,u75:89},safe:'GG',segno:'X2',over:'Over 2.5',gg:'GG',value:'GG + Over 2.5',risk:'Medio',score:'1-2 / 2-2'},
+ {id:5,comp:'Ligue 1',time:'17:00',home:'Lille',away:'Nantes',rank:'5ª vs 14ª',formH:'V,N,V,V,P',formA:'P,P,N,V,P',xgH:1.63,xgA:.86,odds:{h:1.70,d:3.55,a:5.35},p:{h:56,x:27,a:17,dc1x:83,dcx2:44,over05:91,over15:71,over25:47,over35:24,u25:53,u35:76,gg:43,ng:57,pt05:64,pt15:22,st05:75,st15:38,btts1:10,btts2:17,corners75:70,corners85:58,u105:60,u115:73,u125:84,cards25:73,cards35:55,u55:66,u65:78,u75:88},safe:'1X + Under 4.5',segno:'1',over:'Over 1.5',gg:'No Gol',value:'1 se quota ≥1.65',risk:'Basso',score:'2-0 / 1-0'},
+ {id:6,comp:'Serie B',time:'16:15',home:'Palermo',away:'Bari',rank:'7ª vs 12ª',formH:'N,V,N,P,V',formA:'N,P,P,V,N',xgH:1.29,xgA:1.11,odds:{h:2.05,d:3.10,a:3.85},p:{h:44,x:31,a:25,dc1x:75,dcx2:56,over05:88,over15:65,over25:39,over35:18,u25:61,u35:82,gg:50,ng:50,pt05:58,pt15:18,st05:70,st15:31,btts1:10,btts2:19,corners75:62,corners85:50,u105:68,u115:79,u125:88,cards25:85,cards35:72,u55:49,u65:63,u75:78},safe:'1X',segno:'1X',over:'Over 0.5/1.5',gg:'GG borderline',value:'Under 3.5',risk:'Medio',score:'1-1 / 1-0'}
+];
+let current = matchesData[0]; let filtered = [...matchesData];
+function el(id){return document.getElementById(id)}
+function riskClass(r){return r==='Basso'?'low':r==='Medio'?'med':'high'}
+function pickProb(m,market){if(market==='segno')return Math.max(m.p.h,m.p.dc1x,m.p.dcx2); if(market==='over15')return m.p.over15; if(market==='over25')return m.p.over25; if(market==='gg')return m.p.gg; if(market==='value')return Math.max(m.p.over25,m.p.gg,m.p.h); return Math.max(m.p.dc1x,m.p.over15,m.p.gg)}
+
+function heatClass(v){
+ if(v>=82) return 'hm-strong';
+ if(v>=68) return 'hm-medium';
+ return 'hm-risk';
+}
+function heatText(v){
+ if(v>=82) return 'FORTE';
+ if(v>=68) return 'MEDIA';
+ return 'FRAGILE';
+}
+
+function kickoraScore(m){
+  const base = (m.p.over15 * .22) + (Math.max(m.p.dc1x,m.p.dcx2) * .24) + (Math.max(m.p.gg,m.p.ng) * .12) + (m.p.over25 * .10) + (m.p.corners75 * .08) + (m.p.cards25 * .06);
+  const riskBonus = m.risk === 'Basso' ? 9 : m.risk === 'Medio' ? 3 : -8;
+  const xgBonus = Math.min(8, Math.max(0, (m.xgH + m.xgA - 2.2) * 6));
+  return Math.max(42, Math.min(98, Math.round(base + riskBonus + xgBonus)));
+}
+function scoreTier(score){
+  if(score >= 88) return {txt:'ELITE', cls:'elite'};
+  if(score >= 80) return {txt:'PREMIUM', cls:'premium'};
+  if(score >= 70) return {txt:'GOOD', cls:'goodscore'};
+  return {txt:'RISK', cls:'riskscore'};
+}
+function riskWeight(r){
+  return r === 'Basso' ? 1 : r === 'Medio' ? 2 : 3;
+}
+function populateCompetitions(){
+  const select = el('competitionFilter');
+  if(!select || select.dataset.ready) return;
+  [...new Set(matchesData.map(m=>m.comp))].sort().forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c;o.textContent=c;
+    select.appendChild(o);
+  });
+  select.dataset.ready='1';
+}
+function sortMatches(list){
+  const sort = el('sortBy') ? el('sortBy').value : 'score';
+  const market = el('market') ? el('market').value : 'all';
+  return [...list].sort((a,b)=>{
+    if(sort==='score') return kickoraScore(b)-kickoraScore(a);
+    if(sort==='prob') return pickProb(b,market)-pickProb(a,market);
+    if(sort==='time') return a.time.localeCompare(b.time);
+    if(sort==='risk') return riskWeight(a.risk)-riskWeight(b.risk);
+    return 0;
+  });
+}
+
+let expertMode = false;
+
+function setExpertMode(value){
+  expertMode = value;
+  if(el('modeStandard')) el('modeStandard').classList.toggle('active', !expertMode);
+  if(el('modePro')) el('modePro').classList.toggle('active', expertMode);
+  renderAnalysis();
+  showToast(expertMode ? 'Modalità PRO attivata.' : 'Modalità STANDARD attivata.');
+}
+
+function buildProPanel(m){
+  if(!expertMode) return '';
+  const xgTotal = (m.xgH + m.xgA).toFixed(2);
+  const momentumH = Math.round((m.p.h * .45) + (m.p.over15 * .20) + (kickoraScore(m) * .35));
+  const momentumA = Math.round((m.p.a * .45) + (m.p.gg * .20) + ((100-kickoraScore(m)) * .20));
+  const pressure = m.p.corners85 >= 65 ? 'Alta' : m.p.corners75 >= 65 ? 'Media' : 'Bassa';
+  const volatility = m.p.over25 >= 62 && m.p.gg >= 58 ? 'Alta' : m.p.u25 >= 55 ? 'Bassa' : 'Media';
+  const tactical = m.p.h > m.p.a + 12 ? `${m.home} con vantaggio territoriale e maggiore controllo statistico.` :
+                  m.p.a > m.p.h + 10 ? `${m.away} più pericolosa nei dati di probabilità.` :
+                  `Match equilibrato: evitare esposizione eccessiva sul segno secco.`;
+
+  return `<div class="pro-panel">
+    <h2>Modalità Esperto — Indicatori avanzati</h2>
+    <div class="pro-grid">
+      <div class="pro-card"><span>xG Totali</span><b>${xgTotal}</b></div>
+      <div class="pro-card"><span>Momentum Casa</span><b>${momentumH}</b></div>
+      <div class="pro-card"><span>Momentum Trasferta</span><b>${momentumA}</b></div>
+      <div class="pro-card"><span>Pressione Corner</span><b>${pressure}</b></div>
+      <div class="pro-card"><span>Volatilità Match</span><b>${volatility}</b></div>
+      <div class="pro-card"><span>Edge Over</span><b>${m.p.over25 >= 60 ? 'Positivo' : 'Neutro'}</b></div>
+      <div class="pro-card"><span>Edge GG</span><b>${m.p.gg >= 60 ? 'Positivo' : 'Neutro'}</b></div>
+      <div class="pro-card"><span>Stabilità Pick</span><b>${kickoraScore(m) >= 85 ? 'Alta' : kickoraScore(m) >= 74 ? 'Media' : 'Bassa'}</b></div>
+    </div>
+    <p class="pro-read"><b>Lettura PRO:</b> ${tactical} La volatilità è <b>${volatility}</b>, mentre la pressione corner risulta <b>${pressure}</b>. In ottica betting, il valore va cercato solo quando la quota reale supera la probabilità stimata dal motore.</p>
+  </div>`;
+}
+
+function radarValue(seed, min, max){
+  return Math.round(min + (seed * (max-min)));
+}
+
+
+
+function buildApiRealPanel(){
+  return `<div class="api-real-panel">
+    <h2>Integrazione Reale</h2>
+    <div class="api-real-grid">
+      <div class="api-real-card"><span>API partite</span><b>API-Football</b></div>
+      <div class="api-real-card"><span>Database</span><b>Supabase</b></div>
+      <div class="api-real-card"><span>Deploy</span><b>Railway</b></div>
+    </div>
+    <p class="note">Modalità pronta: quando imposti le variabili su Railway, il backend potrà leggere partite reali, salvare pick e aggiornare performance.</p>
+  </div>`;
+}
+
+function buildPerformanceTracker(){
+ const stats = [
+   ['Over 1.5','82%','+14.2%','FORTE'],
+   ['GG','69%','+7.8%','STABILE'],
+   ['1X/X2','77%','+10.1%','SOLIDO'],
+   ['Valore','61%','+18.4%','AGGRESSIVO']
+ ];
+ return `<div class="performance-box">
+   <h2>Performance Tracker</h2>
+   <div class="perf-grid">
+     <div class="perf-card"><span>Accuratezza Totale</span><b>78%</b></div>
+     <div class="perf-card"><span>ROI Simulato</span><b>+11.6%</b></div>
+     <div class="perf-card"><span>Pick Analizzate</span><b>124</b></div>
+     <div class="perf-card"><span>Mercato Top</span><b>Over 1.5</b></div>
+   </div>
+   <div class="perf-table">
+     ${stats.map(s=>`<div class="perf-row"><div>${s[0]}</div><div>${s[1]}</div><div>${s[2]}</div><div>${s[3]}</div></div>`).join('')}
+   </div>
+ </div>`;
+}
+
+function buildRadarChart(m){
+  const home = {
+    form: radarValue(m.p.h/100,60,96),
+    attack: radarValue(m.p.over15/100,58,95),
+    defense: radarValue((100-m.p.gg)/100,50,92),
+    xg: radarValue(m.xgH/3,55,94),
+    stability: kickoraScore(m),
+    pressure: radarValue(m.p.corners75/100,52,93)
+  };
+
+  const away = {
+    form: radarValue(m.p.a/100,55,90),
+    attack: radarValue(m.p.gg/100,54,92),
+    defense: radarValue((100-m.p.over25)/100,48,88),
+    xg: radarValue(m.xgA/3,52,90),
+    stability: Math.max(45,kickoraScore(m)-8),
+    pressure: radarValue(m.p.cards25/100,50,88)
+  };
+
+  const labels=['Forma','Attacco','Difesa','xG','Stabilità','Pressione'];
+  const keys=['form','attack','defense','xg','stability','pressure'];
+  const cx=210, cy=210, r=150;
+
+  function points(obj){
+    return keys.map((k,i)=>{
+      const angle=(Math.PI*2/keys.length)*i-Math.PI/2;
+      const val=(obj[k]/100)*r;
+      return `${cx+Math.cos(angle)*val},${cy+Math.sin(angle)*val}`;
+    }).join(' ');
+  }
+
+  const axes = keys.map((k,i)=>{
+    const angle=(Math.PI*2/keys.length)*i-Math.PI/2;
+    const x=cx+Math.cos(angle)*(r+25);
+    const y=cy+Math.sin(angle)*(r+25);
+    const lx=cx+Math.cos(angle)*r;
+    const ly=cy+Math.sin(angle)*r;
+    return `<line x1="${cx}" y1="${cy}" x2="${lx}" y2="${ly}" stroke="rgba(148,163,184,.25)"/>
+            <text x="${x}" y="${y}" fill="#94a3b8" font-size="12" text-anchor="middle">${labels[i]}</text>`;
+  }).join('');
+
+  return `<div class="radar-box">
+    <h2>Radar Statistico</h2>
+    <div class="radar-wrap">
+      <svg class="radar-svg" viewBox="0 0 420 420">
+        ${axes}
+        <polygon points="${points(home)}" fill="rgba(34,211,238,.20)" stroke="#22d3ee" stroke-width="3"/>
+        <polygon points="${points(away)}" fill="rgba(244,114,182,.18)" stroke="#f472b6" stroke-width="3"/>
+      </svg>
+      <div class="radar-legend">
+        <div class="legend-card"><span class="legend-dot" style="background:#22d3ee"></span><b>${m.home}</b><br>Profilo statistico casa</div>
+        <div class="legend-card"><span class="legend-dot" style="background:#f472b6"></span><b>${m.away}</b><br>Profilo statistico trasferta</div>
+        <div class="legend-card"><b>Lettura</b><br>${home.stability>away.stability?`${m.home} mostra superiorità strutturale.`:`Confronto equilibrato con edge limitato.`}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildMatchTimeline(m){
+  const openGame = m.p.over25 >= 60 || m.p.gg >= 60;
+  const homeStrong = m.p.h > m.p.a + 12;
+  const awayThreat = m.p.a > 30 || m.p.gg >= 58;
+  const secondHalfStrong = m.p.st05 >= 78 || m.p.st15 >= 45;
+
+  const steps = [
+    {
+      time:'0–15’',
+      event: openGame ? 'Avvio intenso' : 'Studio iniziale',
+      desc: openGame ? 'Ritmo potenzialmente alto fin dai primi minuti, con possibilità di pressione immediata.' : 'Fase iniziale più tattica: le squadre potrebbero studiarsi prima di accelerare.',
+      intensity: openGame ? 72 : 45
+    },
+    {
+      time:'15–30’',
+      event: homeStrong ? 'Pressione casa' : awayThreat ? 'Transizioni pericolose' : 'Equilibrio centrale',
+      desc: homeStrong ? `${m.home} ha indicatori favorevoli per produrre occasioni e territorialità.` : awayThreat ? `${m.away} può creare pericolo in ripartenza o su errori di costruzione.` : 'Match equilibrato, con valore soprattutto su mercati prudenti.',
+      intensity: homeStrong || awayThreat ? 76 : 52
+    },
+    {
+      time:'30–45’',
+      event: m.p.pt05 >= 70 ? 'Finestra goal PT' : 'Finale PT controllato',
+      desc: m.p.pt05 >= 70 ? `Over 0.5 primo tempo al ${m.p.pt05}%, possibile accelerazione prima dell’intervallo.` : 'Probabile gestione del ritmo prima dell’intervallo.',
+      intensity: m.p.pt05
+    },
+    {
+      time:'45–70’',
+      event: secondHalfStrong ? 'Secondo tempo caldo' : 'Ripresa gestita',
+      desc: secondHalfStrong ? `La ripresa pesa molto: Over 0.5 ST ${m.p.st05}% e Over 1.5 ST ${m.p.st15}%.` : 'La gara può restare tattica anche dopo l’intervallo.',
+      intensity: secondHalfStrong ? Math.max(m.p.st05, m.p.st15 + 30) : 50
+    },
+    {
+      time:'70–90’',
+      event: m.risk === 'Alto' ? 'Finale volatile' : 'Gestione pick',
+      desc: m.risk === 'Alto' ? 'Finale con maggiore esposizione a sorprese: evitare stake aggressivi.' : `Scenario finale coerente con la pick principale: ${m.safe}.`,
+      intensity: m.risk === 'Alto' ? 82 : kickoraScore(m)
+    }
+  ];
+
+  return `<div class="match-timeline">
+    <div class="timeline-head">
+      <div>
+        <div class="timeline-title">Cronologia Partita</div>
+        <div class="timeline-sub">Lettura predittiva demo dell’andamento gara per fasce temporali.</div>
+      </div>
+      <span class="chip cyan">FLUSSO GARA</span>
+    </div>
+    <div class="timeline-track">
+      ${steps.map(s=>`<div class="timeline-step">
+        <div class="timeline-dot"></div>
+        <div class="timeline-time">${s.time}</div>
+        <div class="timeline-event">${s.event}</div>
+        <div class="timeline-desc">${s.desc}</div>
+        <div class="timeline-intensity"><span style="width:${Math.max(10,Math.min(100,s.intensity))}%"></span></div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function buildSimulator(m){
+  const total = 1000000;
+  const homeEdge = Math.max(0, m.p.h - m.p.a);
+  const awayEdge = Math.max(0, m.p.a - m.p.h);
+  let scores = [];
+
+  if(m.p.over25 >= 62 && m.p.gg >= 58){
+    scores = [
+      {s:'2-1', p:18 + Math.round(homeEdge/8)},
+      {s:'1-2', p:14 + Math.round(awayEdge/8)},
+      {s:'2-2', p:13},
+      {s:'3-1', p:10 + Math.round(m.p.over25/18)}
+    ];
+  } else if(m.p.u25 >= 55 || m.p.ng >= 55){
+    scores = [
+      {s:'1-0', p:19 + Math.round(homeEdge/7)},
+      {s:'1-1', p:17},
+      {s:'0-0', p:10 + Math.round(m.p.u25/12)},
+      {s:'2-0', p:11 + Math.round(homeEdge/10)}
+    ];
+  } else {
+    scores = [
+      {s:'1-1', p:18},
+      {s:'2-1', p:15 + Math.round(homeEdge/9)},
+      {s:'1-0', p:14 + Math.round(homeEdge/10)},
+      {s:'0-1', p:10 + Math.round(awayEdge/9)}
+    ];
+  }
+
+  scores = scores.sort((a,b)=>b.p-a.p).slice(0,4);
+  const max = Math.max(...scores.map(x=>x.p));
+
+  return `<div class="simulator">
+    <div class="sim-head">
+      <div>
+        <div class="sim-title">Simulatore predittivo</div>
+        <div class="sim-sub">Distribuzione demo su ${total.toLocaleString('it-IT')} partite virtuali.</div>
+      </div>
+      <span class="chip cyan">SIMULAZIONE DEMO</span>
+    </div>
+    <div class="sim-grid">
+      <div class="sim-score-list">
+        ${scores.map(x=>`<div class="sim-score-row">
+          <div class="sim-score-top"><span>Risultato ${x.s}</span><span>${x.p}%</span></div>
+          <div class="sim-score-bar"><div class="sim-score-fill" style="width:${Math.round((x.p/max)*100)}%"></div></div>
+        </div>`).join('')}
+      </div>
+      <div class="sim-scenarios">
+        <div class="sim-scenario"><span>Scenario dominante</span><b>${m.p.over25 >= 62 ? 'Gara aperta' : m.p.u25 >= 55 ? 'Gara chiusa' : 'Equilibrata'}</b></div>
+        <div class="sim-scenario"><span>Range gol più probabile</span><b>${m.p.over25 >= 62 ? '2-4 gol' : '1-3 gol'}</b></div>
+        <div class="sim-scenario"><span>Indice stabilità</span><b>${kickoraScore(m) >= 85 ? 'Alto' : kickoraScore(m) >= 74 ? 'Medio' : 'Basso'}</b></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildAiAlerts(){
+  const alerts = sortMatches(filtered).map(m=>{
+    const score = kickoraScore(m);
+    if(m.p.over25 >= 62 && m.odds && m.odds.h >= 1.6){
+      return {m, sev:'hot', tag:'ANOMALIA OVER', text:`Over 2.5 al ${m.p.over25}% con profilo offensivo alto. Possibile mercato sottostimato se la quota reale resta alta.`};
+    }
+    if(score >= 86 && m.risk === 'Basso'){
+      return {m, sev:'safe', tag:'SAFE BOOST', text:`Kickora Score ${score} con rischio basso. Match molto adatto a giocata conservativa o base multipla.`};
+    }
+    if(m.p.gg >= 64 && m.p.over15 >= 80){
+      return {m, sev:'hot', tag:'GG + GOAL TREND', text:`BTTS forte e Over 1.5 sopra l'80%. Scenario gara aperta con almeno un gol per parte plausibile.`};
+    }
+    if(m.p.cards35 >= 65){
+      return {m, sev:'watch', tag:'TENSIONE CARTELLINI', text:`Cartellini Over 3.5 sopra soglia. Match potenzialmente fisico o tatticamente bloccato.`};
+    }
+    return null;
+  }).filter(Boolean).slice(0,4);
+
+  if(!alerts.length){
+    el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip">Nessuna anomalia forte</span></h2><p class="note">Il motore non rileva edge evidenti con i filtri attuali.</p>`;
+    return;
+  }
+
+  el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip hot">${alerts.length} segnali</span></h2>
+    <div class="ai-alert-grid">
+      ${alerts.map(a=>`<div class="ai-alert" onclick="selectMatch(${a.m.id})">
+        <small>${a.m.comp} · ${a.m.time}</small>
+        <strong>${a.m.home} vs ${a.m.away}</strong>
+        <p>${a.text}</p>
+        <span class="ai-sev ${a.sev}">${a.tag}</span>
+      </div>`).join('')}
+    </div>`;
+}
+
+function renderTopPicks(){
+  const list = sortMatches(filtered).slice(0,6);
+  el('topPicks').innerHTML = `<h2>Miglior Picks dinamiche</h2><div class="top-grid">` + list.map(m=>{
+    const s=kickoraScore(m), tier=scoreTier(s);
+    return `<div class="top-card" onclick="selectMatch(${m.id})">
+      <small>${m.comp} · ${m.time}</small>
+      <strong>${m.home} vs ${m.away}</strong>
+      <div class="top-line">
+        <span class="chip good">${m.safe}</span>
+        <div><div class="score-ring" style="--score:${s}"><b>${s}</b></div><div class="score-label ${tier.cls}">${tier.txt}</div></div>
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+function updateFeedback(){
+  const market = el('market').value;
+  const comp = el('competitionFilter').value;
+  const min = el('minProb').value;
+  const txtMarket = market==='all'?'tutti i mercati':market.toUpperCase();
+  const txtComp = comp==='all'?'tutti i campionati':comp;
+  const source = el('dataSource') ? el('dataSource').value : 'demo'; el('filterFeedback').innerHTML = `Fonte: <b>${source}</b> · filtro: <b>${txtMarket}</b> · ${txtComp} · soglia minima <b>${min}%</b> · risultati <b>${filtered.length}</b>`;
+}
+
+function renderKPIs(){el('kpiMatches').textContent=filtered.length; el('kpiSafe').textContent=filtered.filter(m=>m.risk==='Basso').length; el('kpiValue').textContent=filtered.filter(m=>m.value).length; el('kpiAvg').textContent=Math.round(filtered.reduce((s,m)=>s+m.p.over15,0)/(filtered.length||1))+'%'}
+function renderMatches(){el('matches').innerHTML=filtered.map(m=>`<div class="match ${m.id===current.id?'active':''}" onclick="selectMatch(${m.id})"><div class="match-top"><span>${m.comp} · ${m.time}</span><span>${m.rank}</span></div><div class="teams">${m.home} vs ${m.away}</div><div class="chips"><span class="chip good">${m.safe}</span><span class="chip cyan">O1.5 ${m.p.over15}%</span><span class="chip hot">GG ${m.p.gg}%</span><span class="chip">K-Score ${kickoraScore(m)}</span><span class="chip">Rischio ${m.risk}</span></div>
+<div class="heatmap-wrap">
+<div class="heatmap-bar"><div class="heatmap-fill ${heatClass(kickoraScore(m))}" style="width:${kickoraScore(m)}%;background:currentColor"></div></div>
+<div class="heatmap-label ${heatClass(kickoraScore(m))}"><span>Probabilità</span><span>${heatText(kickoraScore(m))}</span></div>
+</div></div>`).join('')||'<p class="note">Nessuna partita trovata con questi filtri.</p>'}
+function bar(label,val){return `<div class="bar"><div class="fill" style="width:${Math.max(8,val)}%"><span>${label}</span><span>${val}%</span></div></div>`}
+
+function renderAnalysis(){const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div class="sections"><div class="box"><h3>Analisi tempi</h3><div class="list"><div class="row"><span>Over 0.5 PT</span><b>${m.p.pt05}%</b></div><div class="row"><span>Over 1.5 PT</span><b>${m.p.pt15}%</b></div><div class="row"><span>BTTS 1° tempo</span><b>${m.p.btts1}%</b></div><div class="row"><span>Over 0.5 ST</span><b>${m.p.st05}%</b></div><div class="row"><span>Over 1.5 ST</span><b>${m.p.st15}%</b></div><div class="row"><span>BTTS 2° tempo</span><b>${m.p.btts2}%</b></div></div></div><div class="box"><h3>Corner</h3><div class="list"><div class="row"><span>Over 7.5</span><b>${m.p.corners75}%</b></div><div class="row"><span>Over 8.5</span><b>${m.p.corners85}%</b></div><div class="row"><span>Under 10.5</span><b>${m.p.u105}%</b></div><div class="row"><span>Under 11.5</span><b>${m.p.u115}%</b></div><div class="row"><span>Under 12.5</span><b>${m.p.u125}%</b></div></div></div><div class="box"><h3>Cartellini</h3><div class="list"><div class="row"><span>Over 2.5</span><b>${m.p.cards25}%</b></div><div class="row"><span>Over 3.5</span><b>${m.p.cards35}%</b></div><div class="row"><span>Under 5.5</span><b>${m.p.u55}%</b></div><div class="row"><span>Under 6.5</span><b>${m.p.u65}%</b></div><div class="row"><span>Under 7.5</span><b>${m.p.u75}%</b></div></div></div><div class="box"><h3>Indicatori avanzati demo</h3><div class="list"><div class="row"><span>xG ${m.home}</span><b>${m.xgH}</b></div><div class="row"><span>xG ${m.away}</span><b>${m.xgA}</b></div><div class="row"><span>Forma ${m.home}</span><b>${m.formH}</b></div><div class="row"><span>Forma ${m.away}</span><b>${m.formA}</b></div></div></div></div><div class="verdict"><h2>Conclusione finale</h2><p>La giocata più equilibrata è <b>${m.safe}</b>. Il colpo valore suggerito è <b>${m.value}</b>, da usare solo se la quota reale mantiene margine rispetto alla probabilità stimata.</p><div class="picks"><div class="pick"><small>SAFE PICK</small><strong>${m.safe}</strong></div><div class="pick"><small>SEGNO FISSO</small><strong>${m.segno}</strong></div><div class="pick"><small>OVER</small><strong>${m.over}</strong></div><div class="pick"><small>COLPO VALORE</small><strong>${m.value}</strong></div></div><p class="note">Demo: percentuali simulate e realistiche, non collegate a quote/live API. Il layout è già pronto per API-Football o altra sorgente.</p></div>`}
+function selectMatch(id){current=matchesData.find(m=>m.id===id)||filtered[0];renderMatches();renderTopPicks();buildAiAlerts();renderAnalysis()}
+function applyFilters(){const market=el('market').value,risk=el('risk').value,min=Number(el('minProb').value||0),comp=el('competitionFilter').value;filtered=matchesData.filter(m=>(risk==='all'||m.risk===risk)&&(comp==='all'||m.comp===comp)&&pickProb(m,market)>=min);filtered=sortMatches(filtered);current=filtered[0]||matchesData[0];renderKPIs();renderTopPicks();buildAiAlerts();renderMatches();renderAnalysis();updateFeedback()}
+
+const API_COUNTER_KEY = 'kickora_api_counter_monthly_v1';
+const API_MONTHLY_LIMIT = 500;
+
+function monthKey(){
+  return new Date().toISOString().slice(0,7);
+}
+function monthLabel(){
+  const d = new Date();
+  return d.toLocaleDateString('it-IT',{month:'2-digit',year:'2-digit'});
+}
+function getApiCounter(){
+  const saved = localStorage.getItem(API_COUNTER_KEY);
+  let data = saved ? JSON.parse(saved) : null;
+  if(!data || data.month !== monthKey()){
+    data = {month: monthKey(), used: 0, limit: API_MONTHLY_LIMIT};
+    localStorage.setItem(API_COUNTER_KEY, JSON.stringify(data));
+  }
+  return data;
+}
+function saveApiCounter(data){
+  localStorage.setItem(API_COUNTER_KEY, JSON.stringify(data));
+}
+function renderApiCounter(){
+  const data = getApiCounter();
+  data.limit = API_MONTHLY_LIMIT;
+  const left = Math.max(0, data.limit - data.used);
+  const pct = Math.min(100, Math.round((data.used / Math.max(1,data.limit)) * 100));
+  if(el('apiMonthLabel')) el('apiMonthLabel').textContent = monthLabel();
+  if(el('apiCallsUsed')) el('apiCallsUsed').textContent = data.used;
+  if(el('apiCallsLeft')) el('apiCallsLeft').textContent = left;
+  if(el('apiUsagePct')) el('apiUsagePct').textContent = pct + '%';
+  if(el('apiProgressFill')) el('apiProgressFill').style.width = pct + '%';
+  if(el('apiCounterStatus')){
+    el('apiCounterStatus').className = pct >= 85 ? 'api-status demo' : 'api-status ready';
+    el('apiCounterStatus').textContent = data.used === 0 ? 'ZERO CONSUMI' : (pct >= 85 ? 'SOGLIA ALTA' : 'CONSUMI OK');
+  }
+  saveApiCounter(data);
+}
+function incrementApiCounter(n=1){
+  const data = getApiCounter();
+  data.used = Math.min(data.limit, data.used + Number(n || 1));
+  saveApiCounter(data);
+  renderApiCounter();
+}
+function simulateApiCall(n=1){
+  incrementApiCounter(n);
+  showToast(n === 1 ? '1 chiamata API simulata.' : n + ' chiamate API simulate.');
+}
+function resetApiCounter(){
+  const data = {month: monthKey(), used: 0, limit: API_MONTHLY_LIMIT};
+  saveApiCounter(data);
+  renderApiCounter();
+  showToast('Contatore API mensile azzerato.');
+}
+
+async function fetchMatchesFromApi(){
+  const source = el('dataSource') ? el('dataSource').value : 'demo';
+  const key = el('apiKey') ? el('apiKey').value.trim() : '';
+
+  // DEMO GUARD: no external calls here, so we do not consume credits.
+  if(source === 'demo' || !key){
+    return [...matchesData];
+  }
+
+  /*
+    API READY AREA — qui collegheremo la fonte reale.
+
+    API-Football example structure:
+    GET https://v3.football.api-sports.io/fixtures?date=YYYY-MM-DD
+    headers: { "x-apisports-key": key }
+
+    Poi mapperemo la risposta dentro questo formato:
+    {
+      id, comp, time, home, away, rank, formH, formA, xgH, xgA,
+      odds, p, safe, segno, over, gg, value, risk, score
+    }
+
+    La parte importante: il resto dell'app NON cambia.
+    Cambia solo la sorgente che alimenta matchesData/runtimeData.
+  */
+
+  // Quando abiliteremo la chiamata vera, aggiungeremo incrementApiCounter(1) dopo ogni fetch riuscito.
+  return [...matchesData];
+}
+
+function showToast(msg){
+  const t = el('toast');
+  if(!t) return;
+  t.innerHTML = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+async function testApiMode(){
+  const source = el('dataSource').value;
+  const key = el('apiKey').value.trim();
+  const status = el('apiStatus');
+  const dot = el('sourceDot');
+
+  if(source === 'demo'){
+    status.className = 'api-status demo';
+    status.innerHTML = '<span class="source-dot" id="sourceDot"></span>DEMO';
+    showToast('Modalità demo attiva: zero consumo API.');
+    filtered = sortMatches([...matchesData]);
+  } else if(!key){
+    status.className = 'api-status demo';
+    status.innerHTML = '<span class="source-dot" id="sourceDot"></span>API READY · KEY MANCANTE';
+    showToast('Sorgente pronta, ma manca la chiave API.');
+    filtered = sortMatches([...matchesData]);
+  } else {
+    status.className = 'api-status ready';
+    status.innerHTML = '<span class="source-dot ready" id="sourceDot"></span>API READY';
+    showToast('Struttura API pronta. Le chiamate reali verranno abilitate nello step finale.');
+    filtered = sortMatches(await fetchMatchesFromApi());
+  }
+
+  current = filtered[0] || matchesData[0];
+  renderKPIs();
+  renderTopPicks();
+  renderMatches();
+  renderAnalysis();
+  updateFeedback();
+}
+
+function resetFilters(){populateCompetitions();el('market').value='all';el('risk').value='all';el('competitionFilter').value='all';el('sortBy').value='score';el('minProb').value=60;filtered=sortMatches([...matchesData]);current=filtered[0]||matchesData[0];renderKPIs();renderTopPicks();buildAiAlerts();renderMatches();renderAnalysis();updateFeedback(); if(el('dataSource')){el('dataSource').value='demo'; el('apiKey').value='';}}
+resetFilters();
+function updateLiveClock(){
+ const d=new Date();
+ const h=String(d.getHours()).padStart(2,'0');
+ const m=String(d.getMinutes()).padStart(2,'0');
+ if(el('liveClock')) el('liveClock').textContent=`${h}:${m}`;
+}
+updateLiveClock();
+setInterval(updateLiveClock,60000);
+renderApiCounter();
+</script>
+<div class="toast" id="toast"></div>
+</body>
+</html>
