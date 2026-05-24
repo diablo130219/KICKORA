@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kickora Stats — Live</title>
+<title>Kickora Stats — Demo</title>
 <style>
 :root{
   --bg:#050812;--bg2:#0b1020;--card:rgba(17,24,39,.78);--card2:rgba(30,41,59,.72);--border:rgba(148,163,184,.18);
@@ -297,7 +297,7 @@ button,select,input{font-family:inherit}
   <section class="hero">
     <div class="brand">
       <div><div class="logo">KICKORA <span>STATS</span></div><p class="tag">Statistiche sportive · dati reali API-Football · cache anti-spreco</p></div>
-      <div class="badge">LIVE API READY</div>
+      <div class="badge">DEMO MODE · API READY</div>
     </div>
     <div class="kpi">
       <div class="kpi-card"><strong id="kpiMatches">0</strong><small>Partite caricate</small></div>
@@ -393,19 +393,13 @@ function riskWeight(r){
 }
 function populateCompetitions(){
   const select = el('competitionFilter');
-  if(!select) return;
-
-  const previous = select.value || 'all';
-  select.innerHTML = '<option value="all">Tutti i campionati</option>';
-
-  [...new Set(matchesData.map(m => m.comp).filter(Boolean))].sort().forEach(c => {
-    const o = document.createElement('option');
-    o.value = c;
-    o.textContent = c;
+  if(!select || select.dataset.ready) return;
+  [...new Set(matchesData.map(m=>m.comp))].sort().forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c;o.textContent=c;
     select.appendChild(o);
   });
-
-  select.value = [...select.options].some(o => o.value === previous) ? previous : 'all';
+  select.dataset.ready='1';
 }
 function sortMatches(list){
   const sort = el('sortBy') ? el('sortBy').value : 'score';
@@ -693,7 +687,7 @@ function buildAiAlerts(){
 
   el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip hot">${alerts.length} segnali</span></h2>
     <div class="ai-alert-grid">
-      ${alerts.map(a=>`<div class="ai-alert" onclick="selectMatch(${JSON.stringify(String(a.m.id))})">
+      ${alerts.map(a=>`<div class="ai-alert" onclick="selectMatch(${a.m.id})">
         <small>${a.m.comp} · ${a.m.time}</small>
         <strong>${a.m.home} vs ${a.m.away}</strong>
         <p>${a.text}</p>
@@ -734,36 +728,29 @@ function renderMatches(){el('matches').innerHTML=filtered.map(m=>`<div class="ma
 function bar(label,val){return `<div class="bar"><div class="fill" style="width:${Math.max(8,val)}%"><span>${label}</span><span>${val}%</span></div></div>`}
 
 function renderAnalysis(){const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div class="sections"><div class="box"><h3>Analisi tempi</h3><div class="list"><div class="row"><span>Over 0.5 PT</span><b>${m.p.pt05}%</b></div><div class="row"><span>Over 1.5 PT</span><b>${m.p.pt15}%</b></div><div class="row"><span>BTTS 1° tempo</span><b>${m.p.btts1}%</b></div><div class="row"><span>Over 0.5 ST</span><b>${m.p.st05}%</b></div><div class="row"><span>Over 1.5 ST</span><b>${m.p.st15}%</b></div><div class="row"><span>BTTS 2° tempo</span><b>${m.p.btts2}%</b></div></div></div><div class="box"><h3>Corner</h3><div class="list"><div class="row"><span>Over 7.5</span><b>${m.p.corners75}%</b></div><div class="row"><span>Over 8.5</span><b>${m.p.corners85}%</b></div><div class="row"><span>Under 10.5</span><b>${m.p.u105}%</b></div><div class="row"><span>Under 11.5</span><b>${m.p.u115}%</b></div><div class="row"><span>Under 12.5</span><b>${m.p.u125}%</b></div></div></div><div class="box"><h3>Cartellini</h3><div class="list"><div class="row"><span>Over 2.5</span><b>${m.p.cards25}%</b></div><div class="row"><span>Over 3.5</span><b>${m.p.cards35}%</b></div><div class="row"><span>Under 5.5</span><b>${m.p.u55}%</b></div><div class="row"><span>Under 6.5</span><b>${m.p.u65}%</b></div><div class="row"><span>Under 7.5</span><b>${m.p.u75}%</b></div></div></div><div class="box"><h3>Indicatori avanzati demo</h3><div class="list"><div class="row"><span>xG ${m.home}</span><b>${m.xgH}</b></div><div class="row"><span>xG ${m.away}</span><b>${m.xgA}</b></div><div class="row"><span>Forma ${m.home}</span><b>${m.formH}</b></div><div class="row"><span>Forma ${m.away}</span><b>${m.formA}</b></div></div></div></div><div class="verdict"><h2>Conclusione finale</h2><p>La giocata più equilibrata è <b>${m.safe}</b>. Il colpo valore suggerito è <b>${m.value}</b>, da usare solo se la quota reale mantiene margine rispetto alla probabilità stimata.</p><div class="picks"><div class="pick"><small>SAFE PICK</small><strong>${m.safe}</strong></div><div class="pick"><small>SEGNO FISSO</small><strong>${m.segno}</strong></div><div class="pick"><small>OVER</small><strong>${m.over}</strong></div><div class="pick"><small>COLPO VALORE</small><strong>${m.value}</strong></div></div><p class="note">Demo: percentuali simulate e realistiche, non collegate a quote/live API. Il layout è già pronto per API-Football o altra sorgente.</p></div>`}
-
 function selectMatch(id){
   const targetId = String(id);
-  current =
-    matchesData.find(m => String(m.id) === targetId) ||
-    filtered.find(m => String(m.id) === targetId) ||
-    filtered[0] ||
-    matchesData[0];
-
+  current = matchesData.find(m => String(m.id) === targetId) || filtered.find(m => String(m.id) === targetId) || filtered[0] || matchesData[0];
   renderMatches();
   renderTopPicks();
   if(typeof buildAiAlerts === 'function') buildAiAlerts();
   renderAnalysis();
   updateFeedback();
 }
-
 function applyFilters(){
-  const market = el('market').value;
-  const risk = el('risk').value;
-  const min = Number(el('minProb').value || 0);
-  const comp = el('competitionFilter').value;
+  const market=el('market').value;
+  const risk=el('risk').value;
+  const min=Number(el('minProb').value||0);
+  const comp=el('competitionFilter').value;
 
-  filtered = matchesData.filter(m =>
-    (risk === 'all' || m.risk === risk) &&
-    (comp === 'all' || m.comp === comp) &&
-    pickProb(m, market) >= min
+  filtered=matchesData.filter(m=>
+    (risk==='all'||m.risk===risk) &&
+    (comp==='all'||m.comp===comp) &&
+    pickProb(m,market)>=min
   );
 
-  filtered = sortMatches(filtered);
-  current = filtered.find(m => String(m.id) === String(current?.id)) || filtered[0] || matchesData[0];
+  filtered=sortMatches(filtered);
+  current=filtered.find(m=>String(m.id)===String(current?.id)) || filtered[0] || matchesData[0];
 
   renderKPIs();
   renderTopPicks();
@@ -773,36 +760,94 @@ function applyFilters(){
   updateFeedback();
 }
 
-function resetFilters(){
-  populateCompetitions();
+const API_COUNTER_KEY = 'kickora_api_counter_monthly_v1';
+const API_MONTHLY_LIMIT = 500;
 
-  el('market').value = 'all';
-  el('risk').value = 'all';
-  el('competitionFilter').value = 'all';
-  el('sortBy').value = 'score';
-  el('minProb').value = 60;
-
-  filtered = sortMatches([...matchesData]);
-  current = filtered[0] || matchesData[0];
-
-  renderKPIs();
-  renderTopPicks();
-  if(typeof buildAiAlerts === 'function') buildAiAlerts();
-  renderMatches();
-  renderAnalysis();
-  updateFeedback();
+function monthKey(){
+  return new Date().toISOString().slice(0,7);
+}
+function monthLabel(){
+  const d = new Date();
+  return d.toLocaleDateString('it-IT',{month:'2-digit',year:'2-digit'});
+}
+function getApiCounter(){
+  const saved = localStorage.getItem(API_COUNTER_KEY);
+  let data = saved ? JSON.parse(saved) : null;
+  if(!data || data.month !== monthKey()){
+    data = {month: monthKey(), used: 0, limit: API_MONTHLY_LIMIT};
+    localStorage.setItem(API_COUNTER_KEY, JSON.stringify(data));
+  }
+  return data;
+}
+function saveApiCounter(data){
+  localStorage.setItem(API_COUNTER_KEY, JSON.stringify(data));
+}
+function renderApiCounter(){
+  const data = getApiCounter();
+  data.limit = API_MONTHLY_LIMIT;
+  const left = Math.max(0, data.limit - data.used);
+  const pct = Math.min(100, Math.round((data.used / Math.max(1,data.limit)) * 100));
+  if(el('apiMonthLabel')) el('apiMonthLabel').textContent = monthLabel();
+  if(el('apiCallsUsed')) el('apiCallsUsed').textContent = data.used;
+  if(el('apiCallsLeft')) el('apiCallsLeft').textContent = left;
+  if(el('apiUsagePct')) el('apiUsagePct').textContent = pct + '%';
+  if(el('apiProgressFill')) el('apiProgressFill').style.width = pct + '%';
+  if(el('apiCounterStatus')){
+    el('apiCounterStatus').className = pct >= 85 ? 'api-status demo' : 'api-status ready';
+    el('apiCounterStatus').textContent = data.used === 0 ? 'ZERO CONSUMI' : (pct >= 85 ? 'SOGLIA ALTA' : 'CONSUMI OK');
+  }
+  saveApiCounter(data);
+}
+function incrementApiCounter(n=1){
+  const data = getApiCounter();
+  data.used = Math.min(data.limit, data.used + Number(n || 1));
+  saveApiCounter(data);
+  renderApiCounter();
+}
+function simulateApiCall(n=1){
+  incrementApiCounter(n);
+  showToast(n === 1 ? '1 chiamata API simulata.' : n + ' chiamate API simulate.');
+}
+function resetApiCounter(){
+  const data = {month: monthKey(), used: 0, limit: API_MONTHLY_LIMIT};
+  saveApiCounter(data);
+  renderApiCounter();
+  showToast('Contatore API mensile azzerato.');
 }
 
-function safeNumber(v, fallback=0){
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
+function showToast(msg){
+  const t = el('toast');
+  if(!t) return;
+  t.innerHTML = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
 }
+
+
+
+
+async function checkLiveSystem(){
+  try{
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    const ok = data.apiFootballConfigured === true;
+    if(el('liveConnStatus')){ el('liveConnStatus').textContent = ok ? 'API CONNESSA' : 'API OFFLINE'; el('liveConnStatus').className = ok ? 'api-status ready' : 'api-status demo'; }
+    if(el('liveApiState')) el('liveApiState').textContent = ok ? 'Online' : 'Offline';
+    if(el('liveCacheStatus')) el('liveCacheStatus').textContent = data.cacheTtlMinutes ? data.cacheTtlMinutes + ' min' : '—';
+    if(el('liveCallsStatus')) el('liveCallsStatus').textContent = (data.apiCallsToday ?? 0) + '/100 oggi';
+    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    if(el('liveConnStatus')){ el('liveConnStatus').textContent = 'ERRORE'; el('liveConnStatus').className = 'api-status demo'; }
+    if(el('liveApiState')) el('liveApiState').textContent = 'Errore';
+  }
+}
+
 
 function normalizeKickoraLiveMatch(m, idx){
   const p = m.p || {};
   return {
     ...m,
-    id: String(m.id || m.external_id || ('live-' + idx)),
+    id: m.id || m.external_id || ('live-' + idx),
     comp: m.comp || 'Calcio',
     time: m.time || '-',
     home: m.home || 'Casa',
@@ -810,39 +855,39 @@ function normalizeKickoraLiveMatch(m, idx){
     rank: m.rank || '-',
     formH: m.formH || '-',
     formA: m.formA || '-',
-    xgH: safeNumber(m.xgH, 1.35),
-    xgA: safeNumber(m.xgA, 1.12),
+    xgH: Number(m.xgH || 1.35),
+    xgA: Number(m.xgA || 1.12),
     odds: m.odds || {h:0,d:0,a:0},
     p: {
-      h: safeNumber(p.h, 40),
-      x: safeNumber(p.x, 28),
-      a: safeNumber(p.a, 32),
-      dc1x: safeNumber(p.dc1x, 68),
-      dcx2: safeNumber(p.dcx2, 60),
-      over05: safeNumber(p.over05, 90),
-      over15: safeNumber(p.over15, 72),
-      over25: safeNumber(p.over25, 50),
-      over35: safeNumber(p.over35, 26),
-      u25: safeNumber(p.u25, 50),
-      u35: safeNumber(p.u35, 74),
-      gg: safeNumber(p.gg, 52),
-      ng: safeNumber(p.ng, 48),
-      pt05: safeNumber(p.pt05, 62),
-      pt15: safeNumber(p.pt15, 22),
-      st05: safeNumber(p.st05, 72),
-      st15: safeNumber(p.st15, 36),
-      btts1: safeNumber(p.btts1, 12),
-      btts2: safeNumber(p.btts2, 20),
-      corners75: safeNumber(p.corners75, 65),
-      corners85: safeNumber(p.corners85, 54),
-      u105: safeNumber(p.u105, 62),
-      u115: safeNumber(p.u115, 74),
-      u125: safeNumber(p.u125, 84),
-      cards25: safeNumber(p.cards25, 70),
-      cards35: safeNumber(p.cards35, 54),
-      u55: safeNumber(p.u55, 66),
-      u65: safeNumber(p.u65, 78),
-      u75: safeNumber(p.u75, 88)
+      h: Number(p.h ?? 40),
+      x: Number(p.x ?? 28),
+      a: Number(p.a ?? 32),
+      dc1x: Number(p.dc1x ?? 68),
+      dcx2: Number(p.dcx2 ?? 60),
+      over05: Number(p.over05 ?? 90),
+      over15: Number(p.over15 ?? 72),
+      over25: Number(p.over25 ?? 50),
+      over35: Number(p.over35 ?? 26),
+      u25: Number(p.u25 ?? 50),
+      u35: Number(p.u35 ?? 74),
+      gg: Number(p.gg ?? 52),
+      ng: Number(p.ng ?? 48),
+      pt05: Number(p.pt05 ?? 62),
+      pt15: Number(p.pt15 ?? 22),
+      st05: Number(p.st05 ?? 72),
+      st15: Number(p.st15 ?? 36),
+      btts1: Number(p.btts1 ?? 12),
+      btts2: Number(p.btts2 ?? 20),
+      corners75: Number(p.corners75 ?? 65),
+      corners85: Number(p.corners85 ?? 54),
+      u105: Number(p.u105 ?? 62),
+      u115: Number(p.u115 ?? 74),
+      u125: Number(p.u125 ?? 84),
+      cards25: Number(p.cards25 ?? 70),
+      cards35: Number(p.cards35 ?? 54),
+      u55: Number(p.u55 ?? 66),
+      u65: Number(p.u65 ?? 78),
+      u75: Number(p.u75 ?? 88)
     },
     safe: m.safe || 'Over 1.5',
     segno: m.segno || '1X',
@@ -854,66 +899,63 @@ function normalizeKickoraLiveMatch(m, idx){
   };
 }
 
-async function checkLiveSystem(){
-  try{
-    const res = await fetch('/api/health', { cache:'no-store' });
-    const data = await res.json();
-    const ok = data.apiFootballConfigured === true;
-
-    if(el('liveConnStatus')){
-      el('liveConnStatus').textContent = ok ? 'API CONNESSA' : 'API OFFLINE';
-      el('liveConnStatus').className = ok ? 'api-status ready' : 'api-status demo';
-    }
-    if(el('liveApiState')) el('liveApiState').textContent = ok ? 'Online' : 'Offline';
-    if(el('liveCacheStatus')) el('liveCacheStatus').textContent = data.cacheTtlMinutes ? data.cacheTtlMinutes + ' min' : '—';
-    if(el('liveCallsStatus')) el('liveCallsStatus').textContent = (data.apiCallsToday ?? 0) + '/100';
-    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){
-    if(el('liveConnStatus')){
-      el('liveConnStatus').textContent = 'ERRORE';
-      el('liveConnStatus').className = 'api-status demo';
-    }
-    if(el('liveApiState')) el('liveApiState').textContent = 'Errore';
-  }
-}
-
 async function bootLiveMatches(){
-  resetFilters();
-  await checkLiveSystem();
-
-  if(location.protocol === 'file:') return;
+  if(location.protocol === 'file:') {
+    console.log('Kickora: modalità file locale, uso demo.');
+    return;
+  }
 
   try{
-    const res = await fetch('/api/matches/today', { cache:'no-store' });
+    const res = await fetch('/api/matches/today', { cache: 'no-store' });
     const data = await res.json();
-
     if(!res.ok) throw new Error(data.error || 'Errore API');
-    if(!Array.isArray(data.matches) || !data.matches.length) throw new Error('Nessuna partita ricevuta');
+    if(!Array.isArray(data.matches) || data.matches.length === 0) throw new Error('Nessuna partita ricevuta');
 
     matchesData = data.matches.map(normalizeKickoraLiveMatch);
     filtered = sortMatches([...matchesData]);
     current = filtered[0] || matchesData[0];
 
-    populateCompetitions();
+    if(el('competitionFilter')) el('competitionFilter').value='all';
+    populateCompetitions(true);
     renderKPIs();
     renderTopPicks();
     if(typeof buildAiAlerts === 'function') buildAiAlerts();
     renderMatches();
     renderAnalysis();
     updateFeedback();
-    await checkLiveSystem();
+    if(typeof checkLiveSystem === 'function') checkLiveSystem();
 
-    const badge = document.querySelector('.badge');
-    if(badge) badge.textContent = 'LIVE API';
-    console.log('KICKORA LIVE OK', {count: matchesData.length, source: data.source, apiCallsToday: data.apiCallsToday});
+    const kpiLabel = document.querySelector('#kpiMatches')?.nextElementSibling;
+    if(kpiLabel) kpiLabel.textContent = 'Partite reali';
+
+    console.log(`Kickora LIVE: ${matchesData.length} partite caricate da ${data.source || 'api'}.`);
   }catch(err){
-    console.error('KICKORA LIVE ERROR', err);
-    resetFilters();
+    console.warn('Kickora fallback demo:', err.message);
+    if(typeof checkLiveSystem === 'function') checkLiveSystem();
   }
 }
 
-document.addEventListener('DOMContentLoaded', bootLiveMatches);
+function resetFilters(){
+  populateCompetitions(true);
+  el('market').value='all';
+  el('risk').value='all';
+  el('competitionFilter').value='all';
+  el('sortBy').value='score';
+  el('minProb').value=60;
 
+  filtered=sortMatches([...matchesData]);
+  current=filtered[0] || matchesData[0];
+
+  renderKPIs();
+  renderTopPicks();
+  if(typeof buildAiAlerts === 'function') buildAiAlerts();
+  renderMatches();
+  renderAnalysis();
+  updateFeedback();
+}
+resetFilters();
+checkLiveSystem();
+setTimeout(bootLiveMatches, 300);
 function updateLiveClock(){
  const d=new Date();
  const h=String(d.getHours()).padStart(2,'0');

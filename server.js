@@ -19,7 +19,7 @@ const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE || "https://v3.football.
 // Cache: default 6 ore. Su Railway puoi cambiarla con CACHE_TTL_MINUTES.
 const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 360);
 const cache = new Map();
-let apiCallsToday = 0;
+let apiCallsToday = 0;      // chiamate del giorno corrente (limite: 100/giorno)
 let apiCallsDay = new Date().toISOString().slice(0, 10);
 
 const supabase =
@@ -27,7 +27,7 @@ const supabase =
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
 
-function resetDailyCounterIfNeeded() {
+function resetCountersIfNeeded() {
   const today = new Date().toISOString().slice(0, 10);
   if (today !== apiCallsDay) {
     apiCallsDay = today;
@@ -50,7 +50,7 @@ async function apiFootball(path) {
     throw new Error("API_FOOTBALL_KEY non configurata su Railway Variables");
   }
 
-  resetDailyCounterIfNeeded();
+  resetCountersIfNeeded();
 
   const response = await fetch(`${API_FOOTBALL_BASE}${path}`, {
     headers: {
@@ -71,7 +71,6 @@ async function apiFootball(path) {
 function normalizeFixture(row) {
   const fixture = row.fixture || {};
   const league = row.league || {};
-  const teams = row.teams || {};
   const goals = row.goals || {};
 
   return {
@@ -174,20 +173,25 @@ async function saveMatchesToSupabase(normalized) {
   await supabase.from("matches").upsert(rows, { onConflict: "external_id" });
 }
 
+// Rate limit su force-refresh: max 1 chiamata forzata ogni 5 minuti
+let lastForceRefresh = 0;
+const FORCE_REFRESH_COOLDOWN_MS = 5 * 60 * 1000;
+
 app.get("/api/health", (req, res) => {
-  resetDailyCounterIfNeeded();
+  resetCountersIfNeeded();
   res.json({
     ok: true,
     provider: "API-Football",
     apiFootballConfigured: Boolean(API_FOOTBALL_KEY),
     supabaseConfigured: Boolean(supabase),
     cacheTtlMinutes: CACHE_TTL_MINUTES,
-    apiCallsToday
+    apiCallsToday,
+    apiCallsDayLimit: 100
   });
 });
 
 app.get("/api/cache/status", (req, res) => {
-  resetDailyCounterIfNeeded();
+  resetCountersIfNeeded();
   const items = Array.from(cache.entries()).map(([key, entry]) => ({
     key,
     count: entry?.matches?.length || 0,
@@ -200,6 +204,7 @@ app.get("/api/cache/status", (req, res) => {
     ok: true,
     cacheTtlMinutes: CACHE_TTL_MINUTES,
     apiCallsToday,
+    apiCallsDayLimit: 100,
     items
   });
 });
@@ -215,6 +220,21 @@ app.get("/api/matches/today", async (req, res) => {
     const force = req.query.force === "1" || req.query.refresh === "1";
     const key = getCacheKey(date);
     const cached = cache.get(key);
+
+    // Protezione: blocca force-refresh se cooldown non scaduto
+    if (force) {
+      const now = Date.now();
+      if (now - lastForceRefresh < FORCE_REFRESH_COOLDOWN_MS) {
+        const waitSec = Math.ceil((FORCE_REFRESH_COOLDOWN_MS - (now - lastForceRefresh)) / 1000);
+        return res.status(429).json({ error: `Attendi ancora ${waitSec}s prima di forzare un refresh.` });
+      }
+      // Blocca anche se siamo vicini al limite giornaliero (≥95 chiamate)
+      resetCountersIfNeeded();
+      if (apiCallsToday >= 95) {
+        return res.status(429).json({ error: "Limite giornaliero quasi raggiunto (95/100). Refresh forzato bloccato." });
+      }
+      lastForceRefresh = now;
+    }
 
     if (!force && isCacheValid(cached)) {
       return res.json({
