@@ -351,7 +351,7 @@ button,select,input{font-family:inherit}
 </div>
 
 <script>
-const matchesData = [
+const demoMatchesData = [
  {id:1,comp:'Serie A',time:'20:45',home:'Juventus',away:'Milan',rank:'3ª vs 5ª',formH:'V,V,N,V,P',formA:'V,N,V,P,V',xgH:1.72,xgA:1.28,odds:{h:2.10,d:3.30,a:3.55},p:{h:46,x:28,a:26,dc1x:74,dcx2:54,over05:92,over15:76,over25:54,over35:29,u25:46,u35:71,gg:58,ng:42,pt05:69,pt15:27,st05:78,st15:43,btts1:16,btts2:24,corners75:73,corners85:61,u105:58,u115:71,u125:82,cards25:77,cards35:59,u55:64,u65:76,u75:86},safe:'1X + Over 1.5',segno:'1X',over:'Over 1.5',gg:'GG leggero',value:'Over 2.5 se quota alta',risk:'Medio',score:'1-1 / 2-1'},
  {id:2,comp:'Premier League',time:'18:30',home:'Arsenal',away:'Brighton',rank:'2ª vs 8ª',formH:'V,V,V,N,V',formA:'P,V,N,V,P',xgH:2.05,xgA:1.37,odds:{h:1.62,d:4.10,a:5.10},p:{h:59,x:23,a:18,dc1x:82,dcx2:41,over05:96,over15:84,over25:63,over35:37,u25:37,u35:63,gg:61,ng:39,pt05:74,pt15:34,st05:82,st15:51,btts1:19,btts2:29,corners75:79,corners85:68,u105:52,u115:65,u125:78,cards25:64,cards35:45,u55:75,u65:85,u75:92},safe:'Over 1.5',segno:'1',over:'Over 2.5',gg:'GG',value:'1 + Over 1.5',risk:'Basso',score:'2-1 / 2-0'},
  {id:3,comp:'Liga',time:'21:00',home:'Real Sociedad',away:'Valencia',rank:'6ª vs 10ª',formH:'N,V,P,V,N',formA:'P,N,V,N,P',xgH:1.38,xgA:1.02,odds:{h:1.88,d:3.25,a:4.70},p:{h:51,x:30,a:19,dc1x:81,dcx2:49,over05:89,over15:68,over25:42,over35:21,u25:58,u35:79,gg:47,ng:53,pt05:61,pt15:20,st05:72,st15:34,btts1:11,btts2:18,corners75:66,corners85:54,u105:64,u115:76,u125:86,cards25:82,cards35:67,u55:53,u65:68,u75:81},safe:'1X',segno:'1X',over:'Over 1.5 prudente',gg:'No Gol leggero',value:'Under 3.5',risk:'Basso',score:'1-0 / 1-1'},
@@ -359,6 +359,7 @@ const matchesData = [
  {id:5,comp:'Ligue 1',time:'17:00',home:'Lille',away:'Nantes',rank:'5ª vs 14ª',formH:'V,N,V,V,P',formA:'P,P,N,V,P',xgH:1.63,xgA:.86,odds:{h:1.70,d:3.55,a:5.35},p:{h:56,x:27,a:17,dc1x:83,dcx2:44,over05:91,over15:71,over25:47,over35:24,u25:53,u35:76,gg:43,ng:57,pt05:64,pt15:22,st05:75,st15:38,btts1:10,btts2:17,corners75:70,corners85:58,u105:60,u115:73,u125:84,cards25:73,cards35:55,u55:66,u65:78,u75:88},safe:'1X + Under 4.5',segno:'1',over:'Over 1.5',gg:'No Gol',value:'1 se quota ≥1.65',risk:'Basso',score:'2-0 / 1-0'},
  {id:6,comp:'Serie B',time:'16:15',home:'Palermo',away:'Bari',rank:'7ª vs 12ª',formH:'N,V,N,P,V',formA:'N,P,P,V,N',xgH:1.29,xgA:1.11,odds:{h:2.05,d:3.10,a:3.85},p:{h:44,x:31,a:25,dc1x:75,dcx2:56,over05:88,over15:65,over25:39,over35:18,u25:61,u35:82,gg:50,ng:50,pt05:58,pt15:18,st05:70,st15:31,btts1:10,btts2:19,corners75:62,corners85:50,u105:68,u115:79,u125:88,cards25:85,cards35:72,u55:49,u65:63,u75:78},safe:'1X',segno:'1X',over:'Over 0.5/1.5',gg:'GG borderline',value:'Under 3.5',risk:'Medio',score:'1-1 / 1-0'}
 ];
+let matchesData = [...demoMatchesData];
 let current = matchesData[0]; let filtered = [...matchesData];
 function el(id){return document.getElementById(id)}
 function riskClass(r){return r==='Basso'?'low':r==='Medio'?'med':'high'}
@@ -812,9 +813,102 @@ async function checkLiveSystem(){
   }
 }
 
+
+function normalizeKickoraLiveMatch(m, idx){
+  const p = m.p || {};
+  return {
+    ...m,
+    id: m.id || m.external_id || ('live-' + idx),
+    comp: m.comp || 'Calcio',
+    time: m.time || '-',
+    home: m.home || 'Casa',
+    away: m.away || 'Trasferta',
+    rank: m.rank || '-',
+    formH: m.formH || '-',
+    formA: m.formA || '-',
+    xgH: Number(m.xgH || 1.35),
+    xgA: Number(m.xgA || 1.12),
+    odds: m.odds || {h:0,d:0,a:0},
+    p: {
+      h: Number(p.h ?? 40),
+      x: Number(p.x ?? 28),
+      a: Number(p.a ?? 32),
+      dc1x: Number(p.dc1x ?? 68),
+      dcx2: Number(p.dcx2 ?? 60),
+      over05: Number(p.over05 ?? 90),
+      over15: Number(p.over15 ?? 72),
+      over25: Number(p.over25 ?? 50),
+      over35: Number(p.over35 ?? 26),
+      u25: Number(p.u25 ?? 50),
+      u35: Number(p.u35 ?? 74),
+      gg: Number(p.gg ?? 52),
+      ng: Number(p.ng ?? 48),
+      pt05: Number(p.pt05 ?? 62),
+      pt15: Number(p.pt15 ?? 22),
+      st05: Number(p.st05 ?? 72),
+      st15: Number(p.st15 ?? 36),
+      btts1: Number(p.btts1 ?? 12),
+      btts2: Number(p.btts2 ?? 20),
+      corners75: Number(p.corners75 ?? 65),
+      corners85: Number(p.corners85 ?? 54),
+      u105: Number(p.u105 ?? 62),
+      u115: Number(p.u115 ?? 74),
+      u125: Number(p.u125 ?? 84),
+      cards25: Number(p.cards25 ?? 70),
+      cards35: Number(p.cards35 ?? 54),
+      u55: Number(p.u55 ?? 66),
+      u65: Number(p.u65 ?? 78),
+      u75: Number(p.u75 ?? 88)
+    },
+    safe: m.safe || 'Over 1.5',
+    segno: m.segno || '1X',
+    over: m.over || 'Over 1.5',
+    gg: m.gg || 'GG/NoGol',
+    value: m.value || 'Da valutare',
+    risk: m.risk || 'Medio',
+    score: m.score || '-'
+  };
+}
+
+async function bootLiveMatches(){
+  if(location.protocol === 'file:') {
+    console.log('Kickora: modalità file locale, uso demo.');
+    return;
+  }
+
+  try{
+    const res = await fetch('/api/matches/today', { cache: 'no-store' });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Errore API');
+    if(!Array.isArray(data.matches) || data.matches.length === 0) throw new Error('Nessuna partita ricevuta');
+
+    matchesData = data.matches.map(normalizeKickoraLiveMatch);
+    filtered = sortMatches([...matchesData]);
+    current = filtered[0] || matchesData[0];
+
+    populateCompetitions(true);
+    renderKPIs();
+    renderTopPicks();
+    if(typeof buildAiAlerts === 'function') buildAiAlerts();
+    renderMatches();
+    renderAnalysis();
+    updateFeedback();
+    if(typeof checkLiveSystem === 'function') checkLiveSystem();
+
+    const kpiLabel = document.querySelector('#kpiMatches')?.nextElementSibling;
+    if(kpiLabel) kpiLabel.textContent = 'Partite reali';
+
+    console.log(`Kickora LIVE: ${matchesData.length} partite caricate da ${data.source || 'api'}.`);
+  }catch(err){
+    console.warn('Kickora fallback demo:', err.message);
+    if(typeof checkLiveSystem === 'function') checkLiveSystem();
+  }
+}
+
 function resetFilters(){populateCompetitions();el('market').value='all';el('risk').value='all';el('competitionFilter').value='all';el('sortBy').value='score';el('minProb').value=60;filtered=sortMatches([...matchesData]);current=filtered[0]||matchesData[0];renderKPIs();renderTopPicks();buildAiAlerts();renderMatches();renderAnalysis();updateFeedback(); if(el('dataSource')){el('dataSource').value='demo'; el('apiKey').value='';}}
 resetFilters();
 checkLiveSystem();
+setTimeout(bootLiveMatches, 300);
 function updateLiveClock(){
  const d=new Date();
  const h=String(d.getHours()).padStart(2,'0');
