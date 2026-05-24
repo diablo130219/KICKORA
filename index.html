@@ -843,11 +843,19 @@ async function checkLiveSystem(){
 }
 
 
+
+
+
+function safeNumber(v, fallback=0){
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function normalizeKickoraLiveMatch(m, idx){
   const p = m.p || {};
   return {
     ...m,
-    id: m.id || m.external_id || ('live-' + idx),
+    id: String(m.id || m.external_id || ('live-' + idx)),
     comp: m.comp || 'Calcio',
     time: m.time || '-',
     home: m.home || 'Casa',
@@ -855,39 +863,39 @@ function normalizeKickoraLiveMatch(m, idx){
     rank: m.rank || '-',
     formH: m.formH || '-',
     formA: m.formA || '-',
-    xgH: Number(m.xgH || 1.35),
-    xgA: Number(m.xgA || 1.12),
+    xgH: safeNumber(m.xgH, 1.35),
+    xgA: safeNumber(m.xgA, 1.12),
     odds: m.odds || {h:0,d:0,a:0},
     p: {
-      h: Number(p.h ?? 40),
-      x: Number(p.x ?? 28),
-      a: Number(p.a ?? 32),
-      dc1x: Number(p.dc1x ?? 68),
-      dcx2: Number(p.dcx2 ?? 60),
-      over05: Number(p.over05 ?? 90),
-      over15: Number(p.over15 ?? 72),
-      over25: Number(p.over25 ?? 50),
-      over35: Number(p.over35 ?? 26),
-      u25: Number(p.u25 ?? 50),
-      u35: Number(p.u35 ?? 74),
-      gg: Number(p.gg ?? 52),
-      ng: Number(p.ng ?? 48),
-      pt05: Number(p.pt05 ?? 62),
-      pt15: Number(p.pt15 ?? 22),
-      st05: Number(p.st05 ?? 72),
-      st15: Number(p.st15 ?? 36),
-      btts1: Number(p.btts1 ?? 12),
-      btts2: Number(p.btts2 ?? 20),
-      corners75: Number(p.corners75 ?? 65),
-      corners85: Number(p.corners85 ?? 54),
-      u105: Number(p.u105 ?? 62),
-      u115: Number(p.u115 ?? 74),
-      u125: Number(p.u125 ?? 84),
-      cards25: Number(p.cards25 ?? 70),
-      cards35: Number(p.cards35 ?? 54),
-      u55: Number(p.u55 ?? 66),
-      u65: Number(p.u65 ?? 78),
-      u75: Number(p.u75 ?? 88)
+      h: safeNumber(p.h, 40),
+      x: safeNumber(p.x, 28),
+      a: safeNumber(p.a, 32),
+      dc1x: safeNumber(p.dc1x, 68),
+      dcx2: safeNumber(p.dcx2, 60),
+      over05: safeNumber(p.over05, 90),
+      over15: safeNumber(p.over15, 72),
+      over25: safeNumber(p.over25, 50),
+      over35: safeNumber(p.over35, 26),
+      u25: safeNumber(p.u25, 50),
+      u35: safeNumber(p.u35, 74),
+      gg: safeNumber(p.gg, 52),
+      ng: safeNumber(p.ng, 48),
+      pt05: safeNumber(p.pt05, 62),
+      pt15: safeNumber(p.pt15, 22),
+      st05: safeNumber(p.st05, 72),
+      st15: safeNumber(p.st15, 36),
+      btts1: safeNumber(p.btts1, 12),
+      btts2: safeNumber(p.btts2, 20),
+      corners75: safeNumber(p.corners75, 65),
+      corners85: safeNumber(p.corners85, 54),
+      u105: safeNumber(p.u105, 62),
+      u115: safeNumber(p.u115, 74),
+      u125: safeNumber(p.u125, 84),
+      cards25: safeNumber(p.cards25, 70),
+      cards35: safeNumber(p.cards35, 54),
+      u55: safeNumber(p.u55, 66),
+      u65: safeNumber(p.u65, 78),
+      u75: safeNumber(p.u75, 88)
     },
     safe: m.safe || 'Over 1.5',
     segno: m.segno || '1X',
@@ -899,39 +907,54 @@ function normalizeKickoraLiveMatch(m, idx){
   };
 }
 
+function renderAllKickora(){
+  populateCompetitions(true);
+  filtered = sortMatches([...matchesData]);
+  current = filtered[0] || matchesData[0];
+
+  renderKPIs();
+  renderTopPicks();
+  if(typeof buildAiAlerts === 'function') buildAiAlerts();
+  renderMatches();
+  renderAnalysis();
+  updateFeedback();
+}
+
 async function bootLiveMatches(){
   if(location.protocol === 'file:') {
-    console.log('Kickora: modalità file locale, uso demo.');
+    renderAllKickora();
     return;
   }
+
+  const statusEl = el('liveApiStatus') || el('liveConnStatus');
+  if(statusEl) statusEl.textContent = 'Caricamento live...';
 
   try{
     const res = await fetch('/api/matches/today', { cache: 'no-store' });
     const data = await res.json();
+
     if(!res.ok) throw new Error(data.error || 'Errore API');
-    if(!Array.isArray(data.matches) || data.matches.length === 0) throw new Error('Nessuna partita ricevuta');
+    if(!Array.isArray(data.matches)) throw new Error('Formato API non valido');
+    if(data.matches.length === 0) throw new Error('Nessuna partita ricevuta');
 
     matchesData = data.matches.map(normalizeKickoraLiveMatch);
-    filtered = sortMatches([...matchesData]);
-    current = filtered[0] || matchesData[0];
 
-    if(el('competitionFilter')) el('competitionFilter').value='all';
-    populateCompetitions(true);
-    renderKPIs();
-    renderTopPicks();
-    if(typeof buildAiAlerts === 'function') buildAiAlerts();
-    renderMatches();
-    renderAnalysis();
-    updateFeedback();
+    renderAllKickora();
+
     if(typeof checkLiveSystem === 'function') checkLiveSystem();
+    if(statusEl) statusEl.textContent = 'Dati reali attivi';
 
-    const kpiLabel = document.querySelector('#kpiMatches')?.nextElementSibling;
-    if(kpiLabel) kpiLabel.textContent = 'Partite reali';
-
-    console.log(`Kickora LIVE: ${matchesData.length} partite caricate da ${data.source || 'api'}.`);
+    console.log('KICKORA LIVE OK', {
+      count: matchesData.length,
+      source: data.source,
+      apiCallsToday: data.apiCallsToday
+    });
   }catch(err){
-    console.warn('Kickora fallback demo:', err.message);
+    console.error('KICKORA LIVE ERROR', err);
+    matchesData = [...demoMatchesData];
+    renderAllKickora();
     if(typeof checkLiveSystem === 'function') checkLiveSystem();
+    if(statusEl) statusEl.textContent = 'Fallback demo';
   }
 }
 
@@ -953,9 +976,11 @@ function resetFilters(){
   renderAnalysis();
   updateFeedback();
 }}
-resetFilters();
-checkLiveSystem();
-setTimeout(bootLiveMatches, 300);
+document.addEventListener('DOMContentLoaded', () => {
+  resetFilters();
+  if(typeof checkLiveSystem === 'function') checkLiveSystem();
+  bootLiveMatches();
+});
 function updateLiveClock(){
  const d=new Date();
  const h=String(d.getHours()).padStart(2,'0');
