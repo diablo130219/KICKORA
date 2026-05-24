@@ -80,7 +80,7 @@ function normalizeFixture(row) {
     country: league.country || "",
     league_id: league.id || null,
     season: league.season || null,
-    time: fixture.date ? new Date(fixture.date).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "-",
+    time: fixture.date ? new Date(fixture.date).toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }) : "-",
     date: fixture.date || null,
     home: teams.home?.name || "Casa",
     away: teams.away?.name || "Trasferta",
