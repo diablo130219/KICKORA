@@ -6,7 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
+const HOST = "0.0.0.0";
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -336,7 +337,7 @@ app.get("/api/performance", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Kickora API-Football con cache attivo su http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Kickora API-Football con cache attivo su http://${HOST}:${PORT}`);
   console.log(`Cache TTL: ${CACHE_TTL_MINUTES} minuti`);
 });
