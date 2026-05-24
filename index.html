@@ -320,27 +320,6 @@ button,select,input{font-family:inherit}
         <button class="btn secondary" onclick="resetFilters()">Reset</button>
         <div class="filter-feedback" id="filterFeedback">Motore demo pronto.</div>
       </div>
-      
-      <div class="api-panel">
-        <h2>Modalità dati <span class="api-status demo" id="apiStatus"><span class="source-dot" id="sourceDot"></span>DEMO</span></h2>
-        <div class="api-grid">
-          <div class="control">
-            <label>Sorgente dati</label>
-            <select id="dataSource">
-              <option value="demo">Demo locale</option>
-              <option value="api-football">API-Football ready</option>
-              <option value="football-data">Football-data.org ready</option>
-              <option value="thesportsdb">TheSportsDB ready</option>
-            </select>
-          </div>
-          <div class="control">
-            <label>API key / token</label>
-            <input id="apiKey" type="password" placeholder="Lascia vuoto in demo">
-          </div>
-          <button class="btn secondary" onclick="testApiMode()">Test modalità dati</button>
-        </div>
-        <p class="api-help">In demo non viene effettuata nessuna chiamata esterna. Quando inseriremo l'API reale, questa sezione userà la chiave per caricare partite, statistiche e quote.</p>
-      </div>
 
       <div class="api-counter">
         <div class="api-counter-head">
@@ -361,6 +340,26 @@ button,select,input{font-family:inherit}
           <button class="btn secondary tiny" onclick="simulateApiCall()">Simula 1 chiamata</button>
           <button class="btn secondary tiny" onclick="simulateApiCall(10)">Simula 10 chiamate</button>
           <button class="btn secondary tiny" onclick="resetApiCounter()">Reset mese</button>
+        </div>
+      </div>
+
+      
+      <div class="api-counter">
+        <div class="api-counter-head">
+          <div>
+            <div class="api-counter-title">Stato Sistema Live</div>
+            <p class="api-help" style="margin-top:3px">Monitor reale di connessione API, cache e chiamate giornaliere.</p>
+          </div>
+          <span class="api-status demo" id="liveConnStatus">Verifica...</span>
+        </div>
+        <div class="api-counter-grid">
+          <div class="api-counter-card compact"><span>Connessione API</span><b id="liveApiState">—</b></div>
+          <div class="api-counter-card compact"><span>Cache</span><b id="liveCacheStatus">—</b></div>
+          <div class="api-counter-card compact"><span>Chiamate oggi</span><b id="liveCallsStatus">—</b></div>
+          <div class="api-counter-card compact"><span>Ultimo refresh</span><b id="liveRefreshStatus">—</b></div>
+        </div>
+        <div class="api-counter-actions">
+          <button class="btn secondary tiny" onclick="checkLiveSystem()">Aggiorna stato</button>
         </div>
       </div>
 
@@ -738,7 +737,7 @@ function updateFeedback(){
   const min = el('minProb').value;
   const txtMarket = market==='all'?'tutti i mercati':market.toUpperCase();
   const txtComp = comp==='all'?'tutti i campionati':comp;
-  const source = el('dataSource') ? el('dataSource').value : 'demo'; el('filterFeedback').innerHTML = `Fonte: <b>${source}</b> · filtro: <b>${txtMarket}</b> · ${txtComp} · soglia minima <b>${min}%</b> · risultati <b>${filtered.length}</b>`;
+  el('filterFeedback').innerHTML = `Filtro: <b>${txtMarket}</b> · ${txtComp} · soglia minima <b>${min}%</b> · risultati <b>${filtered.length}</b>`;
 }
 
 function renderKPIs(){el('kpiMatches').textContent=filtered.length; el('kpiSafe').textContent=filtered.filter(m=>m.risk==='Basso').length; el('kpiValue').textContent=filtered.filter(m=>m.value).length; el('kpiAvg').textContent=Math.round(filtered.reduce((s,m)=>s+m.p.over15,0)/(filtered.length||1))+'%'}
@@ -808,36 +807,6 @@ function resetApiCounter(){
   showToast('Contatore API mensile azzerato.');
 }
 
-async function fetchMatchesFromApi(){
-  const source = el('dataSource') ? el('dataSource').value : 'demo';
-  const key = el('apiKey') ? el('apiKey').value.trim() : '';
-
-  // DEMO GUARD: no external calls here, so we do not consume credits.
-  if(source === 'demo' || !key){
-    return [...matchesData];
-  }
-
-  /*
-    API READY AREA — qui collegheremo la fonte reale.
-
-    API-Football example structure:
-    GET https://v3.football.api-sports.io/fixtures?date=YYYY-MM-DD
-    headers: { "x-apisports-key": key }
-
-    Poi mapperemo la risposta dentro questo formato:
-    {
-      id, comp, time, home, away, rank, formH, formA, xgH, xgA,
-      odds, p, safe, segno, over, gg, value, risk, score
-    }
-
-    La parte importante: il resto dell'app NON cambia.
-    Cambia solo la sorgente che alimenta matchesData/runtimeData.
-  */
-
-  // Quando abiliteremo la chiamata vera, aggiungeremo incrementApiCounter(1) dopo ogni fetch riuscito.
-  return [...matchesData];
-}
-
 function showToast(msg){
   const t = el('toast');
   if(!t) return;
@@ -846,39 +815,28 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2800);
 }
 
-async function testApiMode(){
-  const source = el('dataSource').value;
-  const key = el('apiKey').value.trim();
-  const status = el('apiStatus');
-  const dot = el('sourceDot');
 
-  if(source === 'demo'){
-    status.className = 'api-status demo';
-    status.innerHTML = '<span class="source-dot" id="sourceDot"></span>DEMO';
-    showToast('Modalità demo attiva: zero consumo API.');
-    filtered = sortMatches([...matchesData]);
-  } else if(!key){
-    status.className = 'api-status demo';
-    status.innerHTML = '<span class="source-dot" id="sourceDot"></span>API READY · KEY MANCANTE';
-    showToast('Sorgente pronta, ma manca la chiave API.');
-    filtered = sortMatches([...matchesData]);
-  } else {
-    status.className = 'api-status ready';
-    status.innerHTML = '<span class="source-dot ready" id="sourceDot"></span>API READY';
-    showToast('Struttura API pronta. Le chiamate reali verranno abilitate nello step finale.');
-    filtered = sortMatches(await fetchMatchesFromApi());
+
+
+async function checkLiveSystem(){
+  try{
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    const ok = data.apiFootballConfigured === true;
+    if(el('liveConnStatus')){ el('liveConnStatus').textContent = ok ? 'API CONNESSA' : 'API OFFLINE'; el('liveConnStatus').className = ok ? 'api-status ready' : 'api-status demo'; }
+    if(el('liveApiState')) el('liveApiState').textContent = ok ? 'Online' : 'Offline';
+    if(el('liveCacheStatus')) el('liveCacheStatus').textContent = data.cacheTtlMinutes ? data.cacheTtlMinutes + ' min' : '—';
+    if(el('liveCallsStatus')) el('liveCallsStatus').textContent = (data.apiCallsToday ?? 0) + '/100';
+    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    if(el('liveConnStatus')){ el('liveConnStatus').textContent = 'ERRORE'; el('liveConnStatus').className = 'api-status demo'; }
+    if(el('liveApiState')) el('liveApiState').textContent = 'Errore';
   }
-
-  current = filtered[0] || matchesData[0];
-  renderKPIs();
-  renderTopPicks();
-  renderMatches();
-  renderAnalysis();
-  updateFeedback();
 }
 
 function resetFilters(){populateCompetitions();el('market').value='all';el('risk').value='all';el('competitionFilter').value='all';el('sortBy').value='score';el('minProb').value=60;filtered=sortMatches([...matchesData]);current=filtered[0]||matchesData[0];renderKPIs();renderTopPicks();buildAiAlerts();renderMatches();renderAnalysis();updateFeedback(); if(el('dataSource')){el('dataSource').value='demo'; el('apiKey').value='';}}
 resetFilters();
+checkLiveSystem();
 function updateLiveClock(){
  const d=new Date();
  const h=String(d.getHours()).padStart(2,'0');
