@@ -347,6 +347,13 @@ button,select,input{font-family:inherit}
 }
 @media(max-width:620px){.date-filter-actions{grid-template-columns:1fr}}
 
+
+.dateBtn{
+padding:10px 12px;border-radius:12px;border:1px solid rgba(34,211,238,.25);
+background:#0f172a;color:#fff;font-weight:700;cursor:pointer
+}
+.dateBtn.active{border-color:#22d3ee}
+
 </style>
 </head>
 <body>
@@ -1080,6 +1087,21 @@ function updateLiveClock(){
 updateLiveClock();
 setInterval(updateLiveClock,60000);
 renderApiCounter();
+
+let selectedRange='today';
+
+async function loadDateRange(range){
+ selectedRange=range;
+ document.querySelectorAll('.dateBtn').forEach(b=>b.classList.toggle('active',b.dataset.range===range));
+ console.log('Range:',range);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+ document.querySelectorAll('.dateBtn').forEach(btn=>{
+   btn.addEventListener('click',()=>loadDateRange(btn.dataset.range));
+ });
+});
+
 </script>
 <div class="toast" id="toast"></div>
 <div class="kickora-debug" id="kickoraDebug"></div>
