@@ -1,7 +1,7 @@
 {
-  "name": "kickora-api-football-final",
+  "name": "kickora-api-football-cache-final",
   "version": "1.0.0",
-  "description": "Kickora con API-Football, Supabase e Railway",
+  "description": "Kickora con API-Football, cache anti-spreco e Supabase ready",
   "type": "module",
   "main": "server.js",
   "scripts": {

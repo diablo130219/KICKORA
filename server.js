@@ -15,21 +15,49 @@ app.use(express.static("."));
 const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
 const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE || "https://v3.football.api-sports.io";
 
+// Cache: default 6 ore. Su Railway puoi cambiarla con CACHE_TTL_MINUTES.
+const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 360);
+const cache = new Map();
+let apiCallsToday = 0;
+let apiCallsDay = new Date().toISOString().slice(0, 10);
+
 const supabase =
   process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
+
+function resetDailyCounterIfNeeded() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== apiCallsDay) {
+    apiCallsDay = today;
+    apiCallsToday = 0;
+  }
+}
+
+function getCacheKey(date) {
+  return `fixtures:${date}`;
+}
+
+function isCacheValid(entry) {
+  if (!entry) return false;
+  const ageMs = Date.now() - entry.createdAt;
+  return ageMs < CACHE_TTL_MINUTES * 60 * 1000;
+}
 
 async function apiFootball(path) {
   if (!API_FOOTBALL_KEY) {
     throw new Error("API_FOOTBALL_KEY non configurata su Railway Variables");
   }
 
+  resetDailyCounterIfNeeded();
+
   const response = await fetch(`${API_FOOTBALL_BASE}${path}`, {
     headers: {
       "x-apisports-key": API_FOOTBALL_KEY
     }
   });
+
+  apiCallsToday += 1;
 
   if (!response.ok) {
     const text = await response.text();
@@ -65,8 +93,6 @@ function normalizeFixture(row) {
 }
 
 function bridgeKickoraModel(match) {
-  // Modello ponte: usa dati reali fixture, ma percentuali ancora calcolate in modo base.
-  // Step successivo: arricchire con standings, team statistics, odds, injuries.
   const seed = (match.home.length * 7 + match.away.length * 5 + Number(match.external_id || 0)) % 28;
   const over15 = Math.min(92, 64 + seed);
   const over25 = Math.max(38, over15 - 22);
@@ -128,42 +154,125 @@ function bridgeKickoraModel(match) {
   };
 }
 
+async function saveMatchesToSupabase(normalized) {
+  if (!supabase || !normalized.length) return;
+
+  const rows = normalized.map((m) => ({
+    external_id: m.external_id,
+    comp: m.comp,
+    country: m.country,
+    match_date: m.date,
+    home_team: m.home,
+    away_team: m.away,
+    status: m.status,
+    goals_home: m.goals_home,
+    goals_away: m.goals_away,
+    raw: m.raw
+  }));
+
+  await supabase.from("matches").upsert(rows, { onConflict: "external_id" });
+}
+
 app.get("/api/health", (req, res) => {
+  resetDailyCounterIfNeeded();
   res.json({
     ok: true,
     provider: "API-Football",
     apiFootballConfigured: Boolean(API_FOOTBALL_KEY),
-    supabaseConfigured: Boolean(supabase)
+    supabaseConfigured: Boolean(supabase),
+    cacheTtlMinutes: CACHE_TTL_MINUTES,
+    apiCallsToday
   });
+});
+
+app.get("/api/cache/status", (req, res) => {
+  resetDailyCounterIfNeeded();
+  const items = Array.from(cache.entries()).map(([key, entry]) => ({
+    key,
+    count: entry?.matches?.length || 0,
+    createdAt: new Date(entry.createdAt).toISOString(),
+    valid: isCacheValid(entry),
+    expiresAt: new Date(entry.createdAt + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
+  }));
+
+  res.json({
+    ok: true,
+    cacheTtlMinutes: CACHE_TTL_MINUTES,
+    apiCallsToday,
+    items
+  });
+});
+
+app.get("/api/cache/clear", (req, res) => {
+  cache.clear();
+  res.json({ ok: true, message: "Cache svuotata" });
 });
 
 app.get("/api/matches/today", async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const force = req.query.force === "1" || req.query.refresh === "1";
+    const key = getCacheKey(date);
+    const cached = cache.get(key);
+
+    if (!force && isCacheValid(cached)) {
+      return res.json({
+        date,
+        count: cached.matches.length,
+        matches: cached.matches,
+        source: "cache",
+        apiCallsToday,
+        cache: {
+          hit: true,
+          createdAt: new Date(cached.createdAt).toISOString(),
+          expiresAt: new Date(cached.createdAt + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
+        }
+      });
+    }
+
     const data = await apiFootball(`/fixtures?date=${date}`);
     const normalized = (data.response || []).map(normalizeFixture);
     const matches = normalized.map(bridgeKickoraModel);
 
-    if (supabase && normalized.length) {
-      const rows = normalized.map((m) => ({
-        external_id: m.external_id,
-        comp: m.comp,
-        country: m.country,
-        match_date: m.date,
-        home_team: m.home,
-        away_team: m.away,
-        status: m.status,
-        goals_home: m.goals_home,
-        goals_away: m.goals_away,
-        raw: m.raw
-      }));
+    cache.set(key, {
+      createdAt: Date.now(),
+      matches,
+      normalized
+    });
 
-      await supabase.from("matches").upsert(rows, { onConflict: "external_id" });
+    // Non bloccare la risposta se Supabase ha problemi.
+    saveMatchesToSupabase(normalized).catch((err) => {
+      console.warn("Supabase save skipped:", err.message);
+    });
+
+    res.json({
+      date,
+      count: matches.length,
+      matches,
+      source: "api-football",
+      apiCallsToday,
+      cache: {
+        hit: false,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
+      }
+    });
+  } catch (error) {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const cached = cache.get(getCacheKey(date));
+
+    if (cached) {
+      return res.json({
+        date,
+        count: cached.matches.length,
+        matches: cached.matches,
+        source: "stale-cache",
+        warning: error.message,
+        apiCallsToday
+      });
     }
 
-    res.json({ date, count: matches.length, matches });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message, apiCallsToday });
   }
 });
 
@@ -228,5 +337,6 @@ app.get("/api/performance", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Kickora API-Football attivo su http://localhost:${PORT}`);
+  console.log(`Kickora API-Football con cache attivo su http://localhost:${PORT}`);
+  console.log(`Cache TTL: ${CACHE_TTL_MINUTES} minuti`);
 });
