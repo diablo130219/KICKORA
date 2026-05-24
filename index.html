@@ -477,7 +477,10 @@ function sortMatches(list){
   return [...list].sort((a,b)=>{
     if(sort==='score') return kickoraScore(b)-kickoraScore(a);
     if(sort==='prob') return pickProb(b,market)-pickProb(a,market);
-    if(sort==='time') return a.time.localeCompare(b.time);
+    if(sort==='time') 
+const parseTime=t=>parseInt((t||'23:59').replace(':',''));
+return parseTime(a.time)-parseTime(b.time);
+
     if(sort==='risk') return riskWeight(a.risk)-riskWeight(b.risk);
     return 0;
   });
@@ -1090,11 +1093,47 @@ renderApiCounter();
 
 let selectedRange='today';
 
+
 async function loadDateRange(range){
  selectedRange=range;
  document.querySelectorAll('.dateBtn').forEach(b=>b.classList.toggle('active',b.dataset.range===range));
- console.log('Range:',range);
+
+ const today=new Date();
+ let offset=0;
+ if(range==='tomorrow') offset=1;
+ if(range==='3days') offset=2;
+
+ const target=new Date(today);
+ target.setDate(today.getDate()+offset);
+
+ const yyyy=target.getFullYear();
+ const mm=String(target.getMonth()+1).padStart(2,'0');
+ const dd=String(target.getDate()).padStart(2,'0');
+ const dateStr=`${yyyy}-${mm}-${dd}`;
+
+ try{
+   const res=await fetch('/api/matches/today?date='+dateStr,{cache:'no-store'});
+   const data=await res.json();
+
+   if(data.matches?.length){
+      matchesData=data.matches.map(normalizeKickoraLiveMatch);
+      filtered=sortMatches([...matchesData]);
+      current=filtered[0];
+
+      populateCompetitions();
+      renderKPIs();
+      renderTopPicks();
+      if(typeof buildAiAlerts==='function') buildAiAlerts();
+      renderMatches();
+      bindMatchClicks();
+      renderAnalysis();
+      updateFeedback();
+   }
+ }catch(e){
+   console.error(e);
+ }
 }
+
 
 document.addEventListener('DOMContentLoaded',()=>{
  document.querySelectorAll('.dateBtn').forEach(btn=>{
