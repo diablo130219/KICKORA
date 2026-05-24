@@ -290,6 +290,63 @@ button,select,input{font-family:inherit}
 .api-real-card b{display:block;font-size:20px;margin-top:4px}
 @media(max-width:950px){.api-real-grid{grid-template-columns:1fr}}
 
+
+.kickora-debug{
+  position:fixed;
+  left:16px;
+  right:16px;
+  bottom:16px;
+  z-index:9999;
+  display:none;
+  border:1px solid rgba(239,68,68,.45);
+  background:rgba(30,5,12,.94);
+  color:#fecaca;
+  border-radius:16px;
+  padding:12px 14px;
+  font-family:monospace;
+  font-size:12px;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+.kickora-debug.show{display:block}
+
+
+.date-filter-box{
+  margin:12px 0 14px;
+  border:1px solid rgba(34,211,238,.25);
+  background:rgba(2,6,23,.38);
+  border-radius:18px;
+  padding:12px;
+}
+.date-filter-title{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:8px;
+}
+.date-filter-actions{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.date-filter-btn{
+  border:1px solid var(--border);
+  background:rgba(15,23,42,.72);
+  color:var(--text);
+  border-radius:12px;
+  padding:10px 8px;
+  font-weight:950;
+  cursor:pointer;
+  transition:.25s;
+}
+.date-filter-btn:hover,.date-filter-btn.active{
+  border-color:rgba(34,211,238,.75);
+  box-shadow:0 0 22px rgba(34,211,238,.15);
+  color:var(--cyan);
+}
+@media(max-width:620px){.date-filter-actions{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -693,7 +750,7 @@ function buildAiAlerts(){
 
   el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip hot">${alerts.length} segnali</span></h2>
     <div class="ai-alert-grid">
-      ${alerts.map(a=>`<div class="ai-alert" onclick="selectMatch(${JSON.stringify(String(a.m.id))})">
+      ${alerts.map(a=>`<div class="ai-alert" data-match-id="${String(a.m.id)}">
         <small>${a.m.comp} · ${a.m.time}</small>
         <strong>${a.m.home} vs ${a.m.away}</strong>
         <p>${a.text}</p>
@@ -706,7 +763,7 @@ function renderTopPicks(){
   const list = sortMatches(filtered).slice(0,6);
   el('topPicks').innerHTML = `<h2>Miglior Picks dinamiche</h2><div class="top-grid">` + list.map(m=>{
     const s=kickoraScore(m), tier=scoreTier(s);
-    return `<div class="top-card" onclick="selectMatch(${JSON.stringify(String(m.id))})">
+    return `<div class="top-card" data-match-id="${String(m.id)}">
       <small>${m.comp} · ${m.time}</small>
       <strong>${m.home} vs ${m.away}</strong>
       <div class="top-line">
@@ -726,7 +783,7 @@ function updateFeedback(){
 }
 
 function renderKPIs(){el('kpiMatches').textContent=filtered.length; el('kpiSafe').textContent=filtered.filter(m=>m.risk==='Basso').length; el('kpiValue').textContent=filtered.filter(m=>m.value).length; el('kpiAvg').textContent=Math.round(filtered.reduce((s,m)=>s+m.p.over15,0)/(filtered.length||1))+'%'}
-function renderMatches(){el('matches').innerHTML=filtered.map(m=>`<div class="match ${m.id===current.id?'active':''}" onclick="selectMatch(${JSON.stringify(String(m.id))})"><div class="match-top"><span>${m.comp} · ${m.time}</span><span>${m.rank}</span></div><div class="teams">${m.home} vs ${m.away}</div><div class="chips"><span class="chip good">${m.safe}</span><span class="chip cyan">O1.5 ${m.p.over15}%</span><span class="chip hot">GG ${m.p.gg}%</span><span class="chip">K-Score ${kickoraScore(m)}</span><span class="chip">Rischio ${m.risk}</span></div>
+function renderMatches(){el('matches').innerHTML=filtered.map(m=>`<div class="match ${m.id===current.id?'active':''}" data-match-id="${String(m.id)}"><div class="match-top"><span>${m.comp} · ${m.time}</span><span>${m.rank}</span></div><div class="teams">${m.home} vs ${m.away}</div><div class="chips"><span class="chip good">${m.safe}</span><span class="chip cyan">O1.5 ${m.p.over15}%</span><span class="chip hot">GG ${m.p.gg}%</span><span class="chip">K-Score ${kickoraScore(m)}</span><span class="chip">Rischio ${m.risk}</span></div>
 <div class="heatmap-wrap">
 <div class="heatmap-bar"><div class="heatmap-fill ${heatClass(kickoraScore(m))}" style="width:${kickoraScore(m)}%;background:currentColor"></div></div>
 <div class="heatmap-label ${heatClass(kickoraScore(m))}"><span>Probabilità</span><span>${heatText(kickoraScore(m))}</span></div>
@@ -735,19 +792,129 @@ function bar(label,val){return `<div class="bar"><div class="fill" style="width:
 
 function renderAnalysis(){const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div class="sections"><div class="box"><h3>Analisi tempi</h3><div class="list"><div class="row"><span>Over 0.5 PT</span><b>${m.p.pt05}%</b></div><div class="row"><span>Over 1.5 PT</span><b>${m.p.pt15}%</b></div><div class="row"><span>BTTS 1° tempo</span><b>${m.p.btts1}%</b></div><div class="row"><span>Over 0.5 ST</span><b>${m.p.st05}%</b></div><div class="row"><span>Over 1.5 ST</span><b>${m.p.st15}%</b></div><div class="row"><span>BTTS 2° tempo</span><b>${m.p.btts2}%</b></div></div></div><div class="box"><h3>Corner</h3><div class="list"><div class="row"><span>Over 7.5</span><b>${m.p.corners75}%</b></div><div class="row"><span>Over 8.5</span><b>${m.p.corners85}%</b></div><div class="row"><span>Under 10.5</span><b>${m.p.u105}%</b></div><div class="row"><span>Under 11.5</span><b>${m.p.u115}%</b></div><div class="row"><span>Under 12.5</span><b>${m.p.u125}%</b></div></div></div><div class="box"><h3>Cartellini</h3><div class="list"><div class="row"><span>Over 2.5</span><b>${m.p.cards25}%</b></div><div class="row"><span>Over 3.5</span><b>${m.p.cards35}%</b></div><div class="row"><span>Under 5.5</span><b>${m.p.u55}%</b></div><div class="row"><span>Under 6.5</span><b>${m.p.u65}%</b></div><div class="row"><span>Under 7.5</span><b>${m.p.u75}%</b></div></div></div><div class="box"><h3>Indicatori avanzati demo</h3><div class="list"><div class="row"><span>xG ${m.home}</span><b>${m.xgH}</b></div><div class="row"><span>xG ${m.away}</span><b>${m.xgA}</b></div><div class="row"><span>Forma ${m.home}</span><b>${m.formH}</b></div><div class="row"><span>Forma ${m.away}</span><b>${m.formA}</b></div></div></div></div><div class="verdict"><h2>Conclusione finale</h2><p>La giocata più equilibrata è <b>${m.safe}</b>. Il colpo valore suggerito è <b>${m.value}</b>, da usare solo se la quota reale mantiene margine rispetto alla probabilità stimata.</p><div class="picks"><div class="pick"><small>SAFE PICK</small><strong>${m.safe}</strong></div><div class="pick"><small>SEGNO FISSO</small><strong>${m.segno}</strong></div><div class="pick"><small>OVER</small><strong>${m.over}</strong></div><div class="pick"><small>COLPO VALORE</small><strong>${m.value}</strong></div></div><p class="note">Demo: percentuali simulate e realistiche, non collegate a quote/live API. Il layout è già pronto per API-Football o altra sorgente.</p></div>`}
 
-function selectMatch(id){
-  const targetId = String(id);
-  current =
-    matchesData.find(m => String(m.id) === targetId) ||
-    filtered.find(m => String(m.id) === targetId) ||
-    filtered[0] ||
-    matchesData[0];
 
+function showKickoraError(msg, err=null){
+  console.error('KICKORA ERROR:', msg, err || '');
+  const box = document.getElementById('kickoraDebug');
+  if(box){
+    box.textContent = msg + (err?.message ? ' → ' + err.message : '');
+    box.classList.add('show');
+  }
+}
+
+window.addEventListener('error', (event) => {
+  showKickoraError('Errore JavaScript: ' + event.message, event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  showKickoraError('Errore promise: ' + (event.reason?.message || event.reason), event.reason);
+});
+
+
+let activeDateRange = 'today';
+
+function isoDateOffset(days=0){
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0,10);
+}
+
+function setActiveDateButton(range){
+  document.querySelectorAll('.date-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.range === range);
+  });
+}
+
+async function fetchMatchesByDate(date){
+  const res = await fetch('/api/matches/today?date=' + encodeURIComponent(date), { cache:'no-store' });
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error || 'Errore API');
+  return data.matches || [];
+}
+
+async function loadRange(range='today'){
+  activeDateRange = range;
+  setActiveDateButton(range);
+
+  if(location.protocol === 'file:') return;
+
+  const dates = range === 'today'
+    ? [isoDateOffset(0)]
+    : range === 'tomorrow'
+    ? [isoDateOffset(1)]
+    : [isoDateOffset(0), isoDateOffset(1), isoDateOffset(2)];
+
+  try{
+    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = 'carico...';
+
+    const chunks = [];
+    for(const date of dates){
+      const rows = await fetchMatchesByDate(date);
+      chunks.push(...rows);
+    }
+
+    if(!chunks.length) throw new Error('Nessuna partita trovata nel periodo selezionato');
+
+    matchesData = chunks.map(normalizeKickoraLiveMatch);
+    filtered = sortMatches([...matchesData]);
+    current = filtered[0] || matchesData[0];
+
+    populateCompetitions();
+    renderKPIs();
+    renderTopPicks();
+    if(typeof buildAiAlerts === 'function') buildAiAlerts();
+    renderMatches();
+    renderAnalysis();
+    updateFeedback();
+    bindMatchClicks();
+    if(typeof checkLiveSystem === 'function') await checkLiveSystem();
+
+    console.log('KICKORA RANGE OK', {range, count: matchesData.length});
+  }catch(err){
+    showKickoraError('Errore caricamento periodo', err);
+  }
+}
+
+function setupDateFilters(){
+  document.querySelectorAll('.date-filter-btn').forEach(btn => {
+    if(btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => loadRange(btn.dataset.range));
+  });
+}
+
+function hardSelectMatch(id){
+  const targetId = String(id);
+  const found =
+    matchesData.find(m => String(m.id) === targetId) ||
+    filtered.find(m => String(m.id) === targetId);
+
+  if(!found){
+    console.warn('Match non trovato', targetId);
+    return;
+  }
+
+  current = found;
   renderMatches();
   renderTopPicks();
   if(typeof buildAiAlerts === 'function') buildAiAlerts();
   renderAnalysis();
   updateFeedback();
+  bindMatchClicks();
+
+  console.log('KICKORA SELECT', current.home, current.away, current.id);
+}
+
+function bindMatchClicks(){
+  document.querySelectorAll('[data-match-id]').forEach(card => {
+    if(card.dataset.bound === '1') return;
+    card.dataset.bound = '1';
+    card.addEventListener('click', () => hardSelectMatch(card.dataset.matchId));
+  });
+}
+
+function selectMatch(id){
+  hardSelectMatch(id);
 }
 
 function applyFilters(){
@@ -769,6 +936,8 @@ function applyFilters(){
   renderTopPicks();
   if(typeof buildAiAlerts === 'function') buildAiAlerts();
   renderMatches();
+  bindMatchClicks();
+  bindMatchClicks();
   renderAnalysis();
   updateFeedback();
 }
@@ -789,6 +958,8 @@ function resetFilters(){
   renderTopPicks();
   if(typeof buildAiAlerts === 'function') buildAiAlerts();
   renderMatches();
+  bindMatchClicks();
+  bindMatchClicks();
   renderAnalysis();
   updateFeedback();
 }
@@ -878,41 +1049,27 @@ async function checkLiveSystem(){
 }
 
 async function bootLiveMatches(){
+  console.log('KICKORA BOOT START');
   resetFilters();
+  setupDateFilters();
   await checkLiveSystem();
 
   if(location.protocol === 'file:') return;
 
-  try{
-    const res = await fetch('/api/matches/today', { cache:'no-store' });
-    const data = await res.json();
+  await loadRange('today');
 
-    if(!res.ok) throw new Error(data.error || 'Errore API');
-    if(!Array.isArray(data.matches) || !data.matches.length) throw new Error('Nessuna partita ricevuta');
-
-    matchesData = data.matches.map(normalizeKickoraLiveMatch);
-    filtered = sortMatches([...matchesData]);
-    current = filtered[0] || matchesData[0];
-
-    populateCompetitions();
-    renderKPIs();
-    renderTopPicks();
-    if(typeof buildAiAlerts === 'function') buildAiAlerts();
-    renderMatches();
-    renderAnalysis();
-    updateFeedback();
-    await checkLiveSystem();
-
-    const badge = document.querySelector('.badge');
-    if(badge) badge.textContent = 'LIVE API';
-    console.log('KICKORA LIVE OK', {count: matchesData.length, source: data.source, apiCallsToday: data.apiCallsToday});
-  }catch(err){
-    console.error('KICKORA LIVE ERROR', err);
-    resetFilters();
-  }
+  const badge = document.querySelector('.badge');
+  if(badge) badge.textContent = 'LIVE API';
 }
 
-document.addEventListener('DOMContentLoaded', bootLiveMatches);
+document.addEventListener('DOMContentLoaded', () => {
+  try{
+    setupDateFilters();
+    bootLiveMatches();
+  }catch(err){
+    showKickoraError('Errore avvio Kickora', err);
+  }
+});
 
 function updateLiveClock(){
  const d=new Date();
@@ -925,5 +1082,6 @@ setInterval(updateLiveClock,60000);
 renderApiCounter();
 </script>
 <div class="toast" id="toast"></div>
+<div class="kickora-debug" id="kickoraDebug"></div>
 </body>
 </html>
