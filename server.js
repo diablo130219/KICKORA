@@ -78,7 +78,17 @@ function generateMockMatches(date) {
     { id:"m020", comp:"Bundesliga",    home:"Wolfsburg",        away:"Freiburg",         time:"15:30", h:2.20, d:3.20, a:3.30, over25:54, over15:74, gg:58 },
   ];
 
-  return fixtures.map(f => {
+  const forms = [
+    ['V,V,N,V,P','V,N,V,P,V'], ['V,V,V,N,V','P,V,N,V,P'], ['N,V,P,V,N','P,N,V,N,P'],
+    ['V,P,V,V,N','V,V,V,N,V'], ['V,N,V,V,P','P,P,N,V,P'], ['N,V,N,P,V','N,P,P,V,N'],
+    ['V,V,P,N,V','V,N,P,V,N'], ['V,N,V,P,N','P,V,V,N,V'], ['V,V,N,V,V','P,N,V,P,V'],
+    ['N,V,V,P,V','V,V,P,N,V'], ['V,P,N,V,V','N,V,V,P,N'], ['V,V,V,P,N','V,N,P,V,V'],
+    ['P,V,V,N,V','V,P,N,V,V'], ['V,V,N,P,V','N,V,V,P,N'], ['N,P,V,N,V','V,N,P,V,N'],
+    ['V,V,N,V,P','P,V,N,V,P'], ['V,N,P,V,V','N,V,P,V,N'], ['V,V,P,V,N','P,N,V,V,P'],
+    ['N,V,V,N,P','V,P,N,V,N'], ['P,V,N,V,N','N,P,V,N,V']
+  ];
+
+  return fixtures.map((f, idx) => {
     const hProb  = Math.round((1/f.h)*100);
     const dProb  = Math.round((1/f.d)*100);
     const aProb  = Math.max(0, 100 - hProb - dProb);
@@ -98,7 +108,7 @@ function generateMockMatches(date) {
       time: f.time,
       home: f.home,
       away: f.away,
-      rank: "-", formH: "-", formA: "-",
+      rank: "-", formH: forms[idx]?.[0] || "V,N,V,P,N", formA: forms[idx]?.[1] || "N,V,P,N,V",
       xgH: 0, xgA: 0, xgSource: "Mock Kickora",
       odds: { h: f.h, d: f.d, a: f.a },
       p: {
