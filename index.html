@@ -124,24 +124,6 @@
 .legend-dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:8px}
 @media(max-width:950px){.radar-wrap{grid-template-columns:1fr}}
 
-.match-timeline{margin-top:16px;border:1px solid rgba(244,114,182,.28);background:linear-gradient(135deg,rgba(244,114,182,.09),rgba(34,211,238,.07));border-radius:24px;padding:16px}
-.timeline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.timeline-title{font-size:18px;font-weight:950}
-.timeline-sub{color:var(--muted);font-size:13px;margin-top:3px}
-.timeline-track{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.timeline-track:before{content:"";position:absolute;left:5%;right:5%;top:21px;height:2px;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--pink));opacity:.45}
-.timeline-step{position:relative;background:rgba(2,6,23,.48);border:1px solid var(--border);border-radius:18px;padding:14px;min-height:138px}
-.timeline-dot{width:16px;height:16px;border-radius:999px;background:var(--cyan);box-shadow:0 0 18px rgba(34,211,238,.65);margin-bottom:12px;position:relative;z-index:2}
-.timeline-step:nth-child(2) .timeline-dot{background:var(--violet)}
-.timeline-step:nth-child(3) .timeline-dot{background:var(--pink)}
-.timeline-step:nth-child(4) .timeline-dot{background:var(--yellow)}
-.timeline-step:nth-child(5) .timeline-dot{background:var(--green)}
-.timeline-time{font-size:12px;font-weight:950;color:var(--muted);margin-bottom:6px}
-.timeline-event{font-size:15px;font-weight:950;margin-bottom:7px}
-.timeline-desc{font-size:12px;color:#dbeafe;line-height:1.45}
-.timeline-intensity{margin-top:10px;height:7px;border-radius:999px;background:rgba(148,163,184,.12);overflow:hidden}
-.timeline-intensity span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cyan),var(--pink))}
-@media(max-width:950px){.timeline-track{grid-template-columns:1fr}.timeline-track:before{display:none}.timeline-step{min-height:auto}}
 
 body:before{
   content:"";
@@ -171,7 +153,7 @@ body:after{
 @keyframes ambientGlow{from{filter:hue-rotate(0deg) brightness(1)}to{filter:hue-rotate(18deg) brightness(1.12)}}
 @keyframes particlesMove{from{background-position:0 0,0 0}to{background-position:160px 120px,-120px 160px}}
 
-.panel,.hero,.match,.stat,.box,.top-card,.ai-alert,.simulator,.radar-box,.match-timeline,.pro-panel{
+.panel,.hero,.match,.stat,.box,.top-card,.ai-alert,.simulator,.radar-box,.pro-panel{
   backdrop-filter:blur(22px) saturate(1.18);
 }
 .panel{
@@ -202,10 +184,10 @@ body:after{
 .btn,
 .btn:after,
 .btn:hover:after,
-.stat,.term-card,.legend-card,.pro-card,.timeline-step,.sim-score-row,.sim-scenario{
+.stat,.term-card,.legend-card,.pro-card,.sim-score-row,.sim-scenario{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 35px rgba(0,0,0,.22);
 }
-.fill,.heatmap-fill,.sim-score-fill,.timeline-intensity span{
+.fill,.heatmap-fill,.sim-score-fill{
   animation:softPulse 2.4s ease-in-out infinite alternate;
 }
 @keyframes softPulse{from{filter:brightness(1)}to{filter:brightness(1.18)}}
@@ -217,7 +199,7 @@ body:after{
 @keyframes consolePulse{from{opacity:.86}to{opacity:1}}
 @media(max-width:1100px){}@media(max-width:620px){}
 
-.match,.stat,.box,.hero,.timeline-step,.legend-card,.pro-card{
+.match,.stat,.box,.hero,.legend-card,.pro-card{
  transition:all .35s cubic-bezier(.22,1,.36,1);
 }
 .match:hover,.stat:hover,.box:hover{
@@ -252,7 +234,7 @@ body:after{
 /* FINAL CLEANUP */
 *{scrollbar-width:thin;scrollbar-color:rgba(34,211,238,.35) rgba(2,6,23,.35)}
 button,select,input{font-family:inherit}
-.match,.stat,.box,.timeline-step,.legend-card,.pro-card,.sim-score-row,.sim-scenario,.top-card,.ai-alert{
+.match,.stat,.box,.legend-card,.pro-card,.sim-score-row,.sim-scenario,.top-card,.ai-alert{
   will-change:transform;
 }
 .match:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible{
@@ -607,65 +589,6 @@ function buildRadarChart(m){
   </div>`;
 }
 
-function buildMatchTimeline(m){
-  const openGame = m.p.over25 >= 60 || m.p.gg >= 60;
-  const homeStrong = m.p.h > m.p.a + 12;
-  const awayThreat = m.p.a > 30 || m.p.gg >= 58;
-  const secondHalfStrong = m.p.st05 >= 78 || m.p.st15 >= 45;
-
-  const steps = [
-    {
-      time:'0–15’',
-      event: openGame ? 'Avvio intenso' : 'Studio iniziale',
-      desc: openGame ? 'Ritmo potenzialmente alto fin dai primi minuti, con possibilità di pressione immediata.' : 'Fase iniziale più tattica: le squadre potrebbero studiarsi prima di accelerare.',
-      intensity: openGame ? 72 : 45
-    },
-    {
-      time:'15–30’',
-      event: homeStrong ? 'Pressione casa' : awayThreat ? 'Transizioni pericolose' : 'Equilibrio centrale',
-      desc: homeStrong ? `${m.home} ha indicatori favorevoli per produrre occasioni e territorialità.` : awayThreat ? `${m.away} può creare pericolo in ripartenza o su errori di costruzione.` : 'Match equilibrato, con valore soprattutto su mercati prudenti.',
-      intensity: homeStrong || awayThreat ? 76 : 52
-    },
-    {
-      time:'30–45’',
-      event: m.p.pt05 >= 70 ? 'Finestra goal PT' : 'Finale PT controllato',
-      desc: m.p.pt05 >= 70 ? `Over 0.5 primo tempo al ${marketPercent(m,'pt05')}, possibile accelerazione prima dell’intervallo.` : 'Probabile gestione del ritmo prima dell’intervallo.',
-      intensity: m.p.pt05
-    },
-    {
-      time:'45–70’',
-      event: secondHalfStrong ? 'Secondo tempo caldo' : 'Ripresa gestita',
-      desc: secondHalfStrong ? `La ripresa pesa molto: Over 0.5 ST ${marketPercent(m,'st05')} e Over 1.5 ST ${marketPercent(m,'st15')}.` : 'La gara può restare tattica anche dopo l’intervallo.',
-      intensity: secondHalfStrong ? Math.max(m.p.st05, m.p.st15 + 30) : 50
-    },
-    {
-      time:'70–90’',
-      event: m.risk === 'Alto' ? 'Finale volatile' : 'Gestione pick',
-      desc: m.risk === 'Alto' ? 'Finale con maggiore esposizione a sorprese: evitare stake aggressivi.' : `Scenario finale coerente con la pick principale: ${m.safe}.`,
-      intensity: m.risk === 'Alto' ? 82 : kickoraScore(m)
-    }
-  ];
-
-  return `<div class="match-timeline">
-    <div class="timeline-head">
-      <div>
-        <div class="timeline-title">Cronologia Partita</div>
-        <div class="timeline-sub">Lettura predittiva demo dell’andamento gara per fasce temporali.</div>
-      </div>
-      <span class="chip cyan">FLUSSO GARA</span>
-    </div>
-    <div class="timeline-track">
-      ${steps.map(s=>`<div class="timeline-step">
-        <div class="timeline-dot"></div>
-        <div class="timeline-time">${s.time}</div>
-        <div class="timeline-event">${s.event}</div>
-        <div class="timeline-desc">${s.desc}</div>
-        <div class="timeline-intensity"><span style="width:${Math.max(10,Math.min(100,s.intensity))}%"></span></div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-
 function buildSimulator(m){
   const total = 1000000;
   const homeEdge = Math.max(0, m.p.h - m.p.a);
@@ -929,7 +852,7 @@ function buildManualXG(m){
 }
 
 function renderAnalysis(){
-  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}</div></div>`}
+  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildRadarChart(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}</div></div>`}
 
 
 function showKickoraError(msg, err=null){
