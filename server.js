@@ -12,418 +12,311 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static("."));
 
-const ODDS_API_KEY = process.env.ODDS_API_KEY;
-const ODDS_API_BASE = process.env.ODDS_API_BASE || "https://api.the-odds-api.com/v4";
-const ODDS_REGIONS = process.env.ODDS_REGIONS || "eu";
-const ODDS_MARKETS = process.env.ODDS_MARKETS || "h2h,totals";
-const ODDS_FORMAT = process.env.ODDS_FORMAT || "decimal";
-const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 1440);
-const MAX_PARALLEL = Number(process.env.MAX_PARALLEL || 1);
-const ODDS_REQUEST_DELAY_MS = Number(process.env.ODDS_REQUEST_DELAY_MS || 1200);
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const API_FOOTBALL_KEY  = process.env.API_FOOTBALL_KEY  || null;
+const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE || "https://v3.football.api-sports.io";
+const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 360); // 6 ore
 
-const ALL_SOCCER_SPORTS = [
-  "soccer_africa_cup_of_nations",
-  "soccer_argentina_primera_division",
-  "soccer_australia_aleague",
-  "soccer_austria_bundesliga",
-  "soccer_belgium_first_div",
-  "soccer_brazil_campeonato",
-  "soccer_brazil_serie_b",
-  "soccer_chile_campeonato",
-  "soccer_china_superleague",
-  "soccer_denmark_superliga",
-  "soccer_efl_champ",
-  "soccer_england_efl_cup",
-  "soccer_england_league1",
-  "soccer_england_league2",
-  "soccer_epl",
-  "soccer_fa_cup",
-  "soccer_fifa_world_cup",
-  "soccer_fifa_world_cup_qualifiers_europe",
-  "soccer_fifa_world_cup_qualifiers_south_america",
-  "soccer_fifa_world_cup_womens",
-  "soccer_fifa_world_cup_winner",
-  "soccer_fifa_club_world_cup",
-  "soccer_finland_veikkausliiga",
-  "soccer_france_coupe_de_france",
-  "soccer_france_ligue_one",
-  "soccer_france_ligue_two",
-  "soccer_germany_bundesliga",
-  "soccer_germany_bundesliga2",
-  "soccer_germany_bundesliga_women",
-  "soccer_germany_dfb_pokal",
-  "soccer_germany_liga3",
-  "soccer_greece_super_league",
-  "soccer_italy_coppa_italia",
-  "soccer_italy_serie_a",
-  "soccer_italy_serie_b",
-  "soccer_japan_j_league",
-  "soccer_korea_kleague1",
-  "soccer_league_of_ireland",
-  "soccer_mexico_ligamx",
-  "soccer_netherlands_eredivisie",
-  "soccer_norway_eliteserien",
-  "soccer_poland_ekstraklasa",
-  "soccer_portugal_primeira_liga",
-  "soccer_russia_premier_league",
-  "soccer_spain_copa_del_rey",
-  "soccer_spain_la_liga",
-  "soccer_spain_segunda_division",
-  "soccer_saudi_arabia_pro_league",
-  "soccer_spl",
-  "soccer_sweden_allsvenskan",
-  "soccer_sweden_superettan",
-  "soccer_switzerland_superleague",
-  "soccer_turkey_super_league",
-  "soccer_uefa_europa_conference_league",
-  "soccer_uefa_champs_league",
-  "soccer_uefa_champs_league_qualification",
-  "soccer_uefa_champs_league_women",
-  "soccer_uefa_europa_league",
-  "soccer_uefa_european_championship",
-  "soccer_uefa_euro_qualification",
-  "soccer_uefa_nations_league",
-  "soccer_concacaf_gold_cup",
-  "soccer_concacaf_leagues_cup",
-  "soccer_conmebol_copa_america",
-  "soccer_conmebol_copa_libertadores",
-  "soccer_conmebol_copa_sudamericana",
-  "soccer_usa_mls"
-];
+const USE_MOCK = !API_FOOTBALL_KEY; // mock automatico se chiave assente
 
+// ─── RATE LIMIT ANTI-BAN ─────────────────────────────────────────────────────
+const MIN_INTERVAL_MS     = 10_000;  // minimo 10 sec tra una chiamata e l'altra
+const MAX_PER_MINUTE      = 6;       // mai oltre 6 req/min (limite reale: 10)
+let lastApiCall           = 0;
+let callsThisMinute       = 0;
+let minuteWindowStart     = Date.now();
+
+// ─── COUNTER GIORNALIERO ──────────────────────────────────────────────────────
 const cache = new Map();
 let apiCallsToday = 0;
-let apiCallsDay = new Date().toISOString().slice(0,10);
+let apiCallsDay   = new Date().toISOString().slice(0, 10);
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-function resetDailyCounterIfNeeded(){
-  const today = new Date().toISOString().slice(0,10);
-  if(today !== apiCallsDay){
-    apiCallsDay = today;
-    apiCallsToday = 0;
-  }
+function resetDailyCounterIfNeeded() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== apiCallsDay) { apiCallsDay = today; apiCallsToday = 0; }
 }
 
-function localDateRome(days=0){
-  const now = new Date();
-  const rome = new Date(now.toLocaleString("en-US", { timeZone:"Europe/Rome" }));
-  rome.setDate(rome.getDate()+days);
-  const y = rome.getFullYear();
-  const m = String(rome.getMonth()+1).padStart(2,"0");
-  const d = String(rome.getDate()).padStart(2,"0");
-  return `${y}-${m}-${d}`;
-}
-
-function eventRomeDate(iso){
-  if(!iso) return "";
-  const d = new Date(iso);
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone:"Europe/Rome",
-    year:"numeric",
-    month:"2-digit",
-    day:"2-digit"
-  }).formatToParts(d);
-  const get = t => parts.find(p=>p.type===t)?.value;
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
-
-function eventRomeTime(iso){
-  if(!iso) return "-";
-  return new Date(iso).toLocaleTimeString("it-IT", {
-    timeZone:"Europe/Rome",
-    hour:"2-digit",
-    minute:"2-digit"
-  });
-}
-
-function cacheValid(entry){
+function getCacheKey(date) { return `fixtures:${date}`; }
+function isCacheValid(entry) {
   return entry && (Date.now() - entry.createdAt) < CACHE_TTL_MINUTES * 60 * 1000;
 }
 
-function bestPrice(bookmakers = [], marketKey, outcomeName){
-  let best = null;
-  for(const bookmaker of bookmakers || []){
-    for(const market of bookmaker.markets || []){
-      if(market.key !== marketKey) continue;
-      for(const outcome of market.outcomes || []){
-        const match = String(outcome.name || "").toLowerCase() === String(outcomeName || "").toLowerCase();
-        if(match){
-          if(!best || Number(outcome.price) > Number(best.price)){
-            best = { price:Number(outcome.price), bookmaker:bookmaker.title, point:outcome.point ?? null };
-          }
-        }
-      }
-    }
+function localDateRome(days = 0) {
+  const now  = new Date();
+  const rome = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+  rome.setDate(rome.getDate() + days);
+  const y = rome.getFullYear();
+  const m = String(rome.getMonth() + 1).padStart(2, "0");
+  const d = String(rome.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+function generateMockMatches(date) {
+  const fixtures = [
+    { id:"m001", comp:"Serie A",       home:"Napoli",           away:"Juventus",         time:"20:45", h:2.10, d:3.20, a:3.50, over25:58, over15:78, gg:62 },
+    { id:"m002", comp:"Serie A",       home:"Inter",            away:"Milan",            time:"18:00", h:1.85, d:3.40, a:4.20, over25:65, over15:82, gg:68 },
+    { id:"m003", comp:"Premier League",home:"Arsenal",          away:"Chelsea",          time:"17:30", h:2.20, d:3.30, a:3.30, over25:60, over15:80, gg:64 },
+    { id:"m004", comp:"Premier League",home:"Manchester City",  away:"Liverpool",        time:"17:30", h:1.75, d:3.60, a:4.50, over25:70, over15:88, gg:72 },
+    { id:"m005", comp:"La Liga",       home:"Real Madrid",      away:"Barcelona",        time:"21:00", h:2.00, d:3.50, a:3.60, over25:62, over15:80, gg:66 },
+    { id:"m006", comp:"La Liga",       home:"Atletico Madrid",  away:"Sevilla",          time:"19:00", h:1.90, d:3.30, a:4.10, over25:52, over15:74, gg:55 },
+    { id:"m007", comp:"Bundesliga",    home:"Bayern Munich",    away:"Borussia Dortmund",time:"18:30", h:1.60, d:4.00, a:5.50, over25:72, over15:88, gg:70 },
+    { id:"m008", comp:"Bundesliga",    home:"RB Leipzig",       away:"Leverkusen",       time:"15:30", h:2.30, d:3.20, a:3.10, over25:66, over15:84, gg:68 },
+    { id:"m009", comp:"Ligue 1",       home:"PSG",              away:"Marseille",        time:"21:00", h:1.55, d:4.20, a:6.00, over25:68, over15:85, gg:65 },
+    { id:"m010", comp:"Ligue 1",       home:"Monaco",           away:"Lyon",             time:"19:00", h:2.10, d:3.30, a:3.40, over25:58, over15:76, gg:60 },
+    { id:"m011", comp:"Champions League",home:"Porto",          away:"Benfica",          time:"21:00", h:2.40, d:3.20, a:2.90, over25:60, over15:80, gg:65 },
+    { id:"m012", comp:"Champions League",home:"Ajax",           away:"Feyenoord",        time:"18:45", h:1.95, d:3.40, a:3.90, over25:64, over15:82, gg:67 },
+    { id:"m013", comp:"Turkey Super League",home:"Galatasaray", away:"Fenerbahce",       time:"20:00", h:2.00, d:3.30, a:3.70, over25:68, over15:86, gg:70 },
+    { id:"m014", comp:"Saudi Pro League",home:"Al-Hilal",       away:"Al-Nassr",         time:"19:00", h:1.80, d:3.50, a:4.30, over25:70, over15:87, gg:72 },
+    { id:"m015", comp:"Serie B",       home:"Palermo",          away:"Bari",             time:"20:30", h:2.20, d:3.10, a:3.30, over25:52, over15:72, gg:56 },
+    { id:"m016", comp:"Serie A",       home:"Fiorentina",       away:"Roma",             time:"15:00", h:2.50, d:3.20, a:2.80, over25:55, over15:76, gg:60 },
+    { id:"m017", comp:"Premier League",home:"Tottenham",        away:"Aston Villa",      time:"15:00", h:2.00, d:3.40, a:3.70, over25:62, over15:80, gg:64 },
+    { id:"m018", comp:"Eredivisie",    home:"PSV",              away:"Feyenoord",        time:"16:30", h:1.85, d:3.60, a:4.20, over25:66, over15:84, gg:68 },
+    { id:"m019", comp:"La Liga",       home:"Villarreal",       away:"Valencia",         time:"17:00", h:2.10, d:3.30, a:3.50, over25:56, over15:75, gg:60 },
+    { id:"m020", comp:"Bundesliga",    home:"Wolfsburg",        away:"Freiburg",         time:"15:30", h:2.20, d:3.20, a:3.30, over25:54, over15:74, gg:58 },
+  ];
+
+  return fixtures.map(f => {
+    const hProb  = Math.round((1/f.h)*100);
+    const dProb  = Math.round((1/f.d)*100);
+    const aProb  = Math.max(0, 100 - hProb - dProb);
+    const kscore = Math.round(Math.max(40, Math.min(92,
+      f.over15 * 0.45 + f.over25 * 0.30 + f.gg * 0.15 + Math.max(hProb, aProb) * 0.10
+    )));
+    const risk   = kscore >= 74 ? "Basso" : kscore >= 63 ? "Medio" : "Alto";
+    const sign   = hProb >= 54 ? "1" : aProb >= 42 ? "2" : hProb >= aProb + 6 ? "1X" : aProb >= hProb + 4 ? "X2" : "1X";
+    const safe   = f.over15 >= 75 ? "Over 1.5" : sign;
+    const over   = f.over25 >= 58 ? "Over 2.5" : f.over15 >= 66 ? "Over 1.5" : "Over 0.5/1.5";
+    const ggLabel= f.gg >= 62 ? "GG" : f.gg >= 52 ? "GG leggero" : "No Gol leggero";
+
+    return {
+      id: f.id,
+      comp: f.comp,
+      date: `${date}T${f.time}:00+02:00`,
+      time: f.time,
+      home: f.home,
+      away: f.away,
+      rank: "-", formH: "-", formA: "-",
+      xgH: 0, xgA: 0, xgSource: "Mock Kickora",
+      odds: { h: f.h, d: f.d, a: f.a },
+      p: {
+        h: hProb, x: dProb, a: aProb,
+        dc1x: Math.min(96, hProb + dProb),
+        dcx2: Math.min(96, aProb + dProb),
+        over05: Math.min(96, f.over15 + 8),
+        over15: f.over15, over25: f.over25,
+        over35: Math.max(18, f.over25 - 22),
+        u25: Math.max(20, 100 - f.over25),
+        u35: 72,
+        gg: f.gg, ng: 100 - f.gg,
+        pt05: null, pt15: null, st05: null, st15: null,
+        btts1: null, btts2: null,
+        corners75: null, corners85: null,
+        u105: null, u115: null, u125: null,
+        cards25: null, cards35: null, u55: null, u65: null, u75: null
+      },
+      safe, segno: sign, over, gg: ggLabel,
+      value: "Mock — quota non reale",
+      risk, score: kscore,
+      isLiveApi: false,
+      isMock: true
+    };
+  });
+}
+
+// ─── API-FOOTBALL (attiva solo con chiave) ────────────────────────────────────
+async function safeApiFootballCall(path) {
+  resetDailyCounterIfNeeded();
+
+  // rispetta intervallo minimo tra chiamate
+  const now     = Date.now();
+  const elapsed = now - lastApiCall;
+  if (elapsed < MIN_INTERVAL_MS) await sleep(MIN_INTERVAL_MS - elapsed);
+
+  // controlla rate al minuto
+  if (now - minuteWindowStart > 60_000) {
+    minuteWindowStart = Date.now();
+    callsThisMinute   = 0;
   }
-  return best;
-}
-
-function bestTotal(bookmakers = [], side="Over", point=2.5){
-  let best = null;
-  for(const bookmaker of bookmakers || []){
-    for(const market of bookmaker.markets || []){
-      if(market.key !== "totals") continue;
-      for(const outcome of market.outcomes || []){
-        if(outcome.name === side && Number(outcome.point) === Number(point)){
-          if(!best || Number(outcome.price) > Number(best.price)){
-            best = { price:Number(outcome.price), bookmaker:bookmaker.title, point:outcome.point };
-          }
-        }
-      }
-    }
+  if (callsThisMinute >= MAX_PER_MINUTE) {
+    const wait = 60_000 - (Date.now() - minuteWindowStart) + 1000;
+    console.warn(`[API-Football] Rate limit interno: aspetto ${Math.round(wait/1000)}s`);
+    await sleep(wait);
+    minuteWindowStart = Date.now();
+    callsThisMinute   = 0;
   }
-  return best;
+
+  lastApiCall = Date.now();
+  callsThisMinute++;
+  apiCallsToday++;
+
+  const res = await fetch(`${API_FOOTBALL_BASE}${path}`, {
+    headers: { "x-apisports-key": API_FOOTBALL_KEY }
+  });
+
+  if (res.status === 429) {
+    console.warn("[API-Football] 429 ricevuto — aspetto 60s e riprovo 1 volta");
+    await sleep(60_000);
+    const retry = await fetch(`${API_FOOTBALL_BASE}${path}`, {
+      headers: { "x-apisports-key": API_FOOTBALL_KEY }
+    });
+    apiCallsToday++;
+    if (!retry.ok) throw new Error(`API-Football retry fallito: ${retry.status}`);
+    return retry.json();
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API-Football error ${res.status}: ${text.slice(0, 200)}`);
+  }
+
+  return res.json();
 }
 
-function implied(odd){
-  const o = Number(odd || 0);
-  if(!o || o <= 1) return 0;
-  return Math.round((1/o)*100);
-}
+function normalizeApiFootballFixture(row) {
+  const fixture = row.fixture || {};
+  const league  = row.league  || {};
+  const teams   = row.teams   || {};
+  const goals   = row.goals   || {};
 
-function scoreFromOdds({ homeProb, drawProb, awayProb, over15, over25, gg }){
-  const base = Math.max(over15, gg, homeProb, awayProb);
-  const stability = Math.max(0, 18 - Math.abs(homeProb-awayProb));
-  return Math.max(40, Math.min(92, Math.round(base*0.72 + stability + over25*0.12)));
-}
-
-function chooseSign({ homeProb, drawProb, awayProb, over25, gg }){
-  const spread = Math.abs(homeProb-awayProb);
-  const open = over25 >= 62 || gg >= 62;
-  if(homeProb >= 54 && homeProb >= awayProb + 14 && homeProb >= drawProb + 10) return "1";
-  if(awayProb >= 42 && awayProb >= homeProb + 10 && awayProb >= drawProb + 8) return "2";
-  if(drawProb >= 34 && spread <= 8 && !open) return "X";
-  if(homeProb >= awayProb + 6 && drawProb >= 22) return "1X";
-  if(awayProb >= homeProb + 4 && drawProb >= 22) return "X2";
-  if(open && drawProb <= 28) return "12";
-  return homeProb >= awayProb ? "1X" : "X2";
-}
-
-function normalizeOddsEvent(ev){
-  const h2hHome = bestPrice(ev.bookmakers, "h2h", ev.home_team);
-  const h2hAway = bestPrice(ev.bookmakers, "h2h", ev.away_team);
-  const h2hDraw = bestPrice(ev.bookmakers, "h2h", "Draw");
-
-  const over25Odd = bestTotal(ev.bookmakers, "Over", 2.5);
-  const under25Odd = bestTotal(ev.bookmakers, "Under", 2.5);
-  const over15Odd = bestTotal(ev.bookmakers, "Over", 1.5);
-  const under35Odd = bestTotal(ev.bookmakers, "Under", 3.5);
-  const yesBtts = bestPrice(ev.bookmakers, "btts", "Yes");
-  const noBtts = bestPrice(ev.bookmakers, "btts", "No");
-
-  const hRaw = implied(h2hHome?.price);
-  const xRaw = implied(h2hDraw?.price);
-  const aRaw = implied(h2hAway?.price);
-  const sum = hRaw + xRaw + aRaw;
-  const homeProb = sum ? Math.round((hRaw/sum)*100) : 40;
-  const drawProb = sum ? Math.round((xRaw/sum)*100) : 28;
-  const awayProb = sum ? Math.max(0, 100-homeProb-drawProb) : 32;
-
-  const over25Imp = implied(over25Odd?.price);
-  const over15Imp = over15Odd ? implied(over15Odd.price) : Math.min(92, Math.max(54, over25Imp + 18));
-  const under25Imp = implied(under25Odd?.price);
-  const under35Imp = implied(under35Odd?.price) || 72;
-  const ggImp = yesBtts ? implied(yesBtts.price) : Math.min(78, Math.max(40, over25Imp + 8));
-  const ngImp = noBtts ? implied(noBtts.price) : Math.max(22, 100-ggImp);
-
-  const kscore = scoreFromOdds({ homeProb, drawProb, awayProb, over15:over15Imp, over25:over25Imp, gg:ggImp });
-  const risk = kscore >= 74 ? "Basso" : kscore >= 63 ? "Medio" : "Alto";
-  const sign = chooseSign({ homeProb, drawProb, awayProb, over25:over25Imp, gg:ggImp });
-
-  const safe = over15Imp >= 75 ? "Over 1.5" : sign;
-  const over = over25Imp >= 58 ? "Over 2.5" : over15Imp >= 66 ? "Over 1.5" : "Over 0.5/1.5";
-  const ggLabel = ggImp >= 62 ? "GG" : ggImp >= 52 ? "GG leggero" : "No Gol leggero";
+  const home = teams.home?.name || "Casa";
+  const away = teams.away?.name || "Trasferta";
 
   return {
-    id: ev.id,
-    comp: ev.sport_title || ev.sport_key || "Soccer",
-    sportKey: ev.sport_key,
-    date: ev.commence_time,
-    time: eventRomeTime(ev.commence_time),
-    home: ev.home_team || "Casa",
-    away: ev.away_team || "Trasferta",
-    rank: "-",
-    formH: "-",
-    formA: "-",
-    xgH: 0,
-    xgA: 0,
-    xgSource: "Manuale Kickora",
-    odds: {
-      h: h2hHome?.price || 0,
-      d: h2hDraw?.price || 0,
-      a: h2hAway?.price || 0
-    },
+    id:       String(fixture.id),
+    comp:     league.name    || "Competizione",
+    date:     fixture.date   || null,
+    time:     fixture.date
+      ? new Date(fixture.date).toLocaleTimeString("it-IT", { timeZone:"Europe/Rome", hour:"2-digit", minute:"2-digit" })
+      : "-",
+    home, away,
+    rank:  "-", formH: "-", formA: "-",
+    xgH:   0,  xgA:   0,  xgSource: "API-Football",
+    odds:  { h: 0, d: 0, a: 0 },
     p: {
-      h: homeProb, x: drawProb, a: awayProb,
-      dc1x: Math.min(96, homeProb+drawProb),
-      dcx2: Math.min(96, awayProb+drawProb),
-      over05: Math.min(96, over15Imp + 8),
-      over15: over15Imp || 0,
-      over25: over25Imp || 0,
-      over35: Math.max(18, (over25Imp || 50)-22),
-      u25: under25Imp || Math.max(20, 100-(over25Imp || 50)),
-      u35: under35Imp,
-      gg: ggImp,
-      ng: ngImp,
-      pt05: null, pt15:null, st05:null, st15:null, btts1:null, btts2:null,
-      corners75:null, corners85:null, u105:null, u115:null, u125:null,
-      cards25:null, cards35:null, u55:null, u65:null, u75:null
+      h: 40, x: 28, a: 32,
+      dc1x: 68, dcx2: 60,
+      over05: 88, over15: 72, over25: 52, over35: 30,
+      u25: 48, u35: 70,
+      gg: 54, ng: 46,
+      pt05: null, pt15: null, st05: null, st15: null,
+      btts1: null, btts2: null,
+      corners75: null, corners85: null,
+      u105: null, u115: null, u125: null,
+      cards25: null, cards35: null, u55: null, u65: null, u75: null
     },
-    safe,
-    segno: sign,
-    over,
-    gg: ggLabel,
+    safe:  "1X prudente", segno: "1X",
+    over:  "Over 1.5", gg: "GG leggero",
     value: "Da valutare con quota reale",
-    risk,
-    score: kscore,
-    isLiveApi: true
+    risk:  "Medio", score: 62,
+    isLiveApi: true, isMock: false,
+    status:      fixture.status?.short || "NS",
+    goals_home:  goals.home,
+    goals_away:  goals.away
   };
 }
 
-async function oddsRequestSport(sport){
-  resetDailyCounterIfNeeded();
-
-  async function doRequest(){
-    const params = new URLSearchParams({
-      apiKey: ODDS_API_KEY,
-      regions: ODDS_REGIONS,
-      markets: ODDS_MARKETS,
-      oddsFormat: ODDS_FORMAT,
-      dateFormat: "iso"
-    });
-    const url = `${ODDS_API_BASE}/sports/${sport}/odds?${params.toString()}`;
-    const res = await fetch(url);
-    apiCallsToday += 1;
-
-    if(res.status === 404) return [];
-    if(res.status === 422){
-      const text = await res.text();
-      console.warn("The Odds API market non supportato", sport, text.slice(0,160));
-      return [];
-    }
-    if(res.status === 429){
-      console.warn("The Odds API frequency limit, retry lento", sport);
-      await sleep(3500);
-      const retry = await fetch(url);
-      apiCallsToday += 1;
-      if(!retry.ok){
-        const text = await retry.text();
-        console.warn("The Odds API retry fallito", sport, retry.status, text.slice(0,160));
-        return [];
-      }
-      return retry.json();
-    }
-    if(!res.ok){
-      const text = await res.text();
-      console.warn("The Odds API error", sport, res.status, text.slice(0,160));
-      return [];
-    }
-    return res.json();
-  }
-
-  const out = await doRequest();
-  await sleep(ODDS_REQUEST_DELAY_MS);
-  return out;
-}
-
-async function fetchAllSoccer(){
-  if(!ODDS_API_KEY) throw new Error("ODDS_API_KEY non configurata su Railway Variables");
-
-  const results = [];
-  for(let i=0; i<ALL_SOCCER_SPORTS.length; i += MAX_PARALLEL){
-    const chunk = ALL_SOCCER_SPORTS.slice(i, i+MAX_PARALLEL);
-
-    const settled = await Promise.allSettled(chunk.map(s => oddsRequestSport(s)));
-    settled.forEach((r, idx) => {
-      if(r.status === "fulfilled" && Array.isArray(r.value)){
-        results.push(...r.value.map(ev => ({...ev, sport_key: chunk[idx]})));
-      } else if(r.status === "rejected"){
-        console.warn("Sport skipped", chunk[idx], r.reason?.message || r.reason);
-      }
-    });
-  }
-  return results;
-}
-
-app.get("/api/health", (req,res)=>{
+// ─── ENDPOINT: HEALTH ─────────────────────────────────────────────────────────
+app.get("/api/health", (req, res) => {
   resetDailyCounterIfNeeded();
   res.json({
-    ok:true,
-    provider:"The Odds API",
-    oddsApiConfigured:Boolean(ODDS_API_KEY),
-    apiFootballConfigured:false,
-    supabaseConfigured:false,
-    cacheTtlMinutes:CACHE_TTL_MINUTES,
+    ok:                   true,
+    provider:             USE_MOCK ? "MOCK" : "API-Football",
+    useMock:              USE_MOCK,
+    apiFootballConfigured: Boolean(API_FOOTBALL_KEY),
+    oddsApiConfigured:    false,
+    cacheTtlMinutes:      CACHE_TTL_MINUTES,
     apiCallsToday,
-    sportsConfigured:ALL_SOCCER_SPORTS.length,
-    markets:ODDS_MARKETS,
-    requestDelayMs:ODDS_REQUEST_DELAY_MS,
-    maxParallel:MAX_PARALLEL
+    apiCallsDayLimit:     100
   });
 });
 
-app.get("/api/cache/status", (req,res)=>{
+// ─── ENDPOINT: CACHE STATUS ───────────────────────────────────────────────────
+app.get("/api/cache/status", (req, res) => {
   resetDailyCounterIfNeeded();
   res.json({
-    ok:true,
-    cacheTtlMinutes:CACHE_TTL_MINUTES,
+    ok: true,
+    cacheTtlMinutes: CACHE_TTL_MINUTES,
     apiCallsToday,
-    items:Array.from(cache.entries()).map(([key, entry])=>({
+    items: Array.from(cache.entries()).map(([key, entry]) => ({
       key,
-      count:entry.matches?.length || 0,
-      valid:cacheValid(entry),
-      createdAt:new Date(entry.createdAt).toISOString(),
-      expiresAt:new Date(entry.createdAt + CACHE_TTL_MINUTES*60*1000).toISOString()
+      count:     entry.matches?.length || 0,
+      valid:     isCacheValid(entry),
+      createdAt: new Date(entry.createdAt).toISOString(),
+      expiresAt: new Date(entry.createdAt + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
     }))
   });
 });
 
-app.get("/api/cache/clear", (req,res)=>{
+app.get("/api/cache/clear", (req, res) => {
   cache.clear();
-  res.json({ok:true, message:"Cache svuotata"});
+  res.json({ ok: true, message: "Cache svuotata" });
 });
 
-app.get("/api/matches/today", async (req,res)=>{
-  try{
-    const date = req.query.date || localDateRome(0);
-    const force = req.query.force === "1" || req.query.refresh === "1";
-    const key = `odds:${date}`;
+// ─── ENDPOINT: MATCHES ────────────────────────────────────────────────────────
+app.get("/api/matches/today", async (req, res) => {
+  try {
+    const date  = req.query.date || localDateRome(0);
+    const key   = getCacheKey(date);
     const cached = cache.get(key);
 
-    if(!force && cacheValid(cached)){
+    // sempre usa cache se valida — no force refresh in produzione
+    if (isCacheValid(cached)) {
       return res.json({
-        date,
-        count:cached.matches.length,
-        matches:cached.matches,
-        source:"cache",
-        apiCallsToday,
-        cache:{hit:true, createdAt:new Date(cached.createdAt).toISOString()}
+        date, count: cached.matches.length, matches: cached.matches,
+        source: cached.source || "cache", apiCallsToday,
+        cache: { hit: true, createdAt: new Date(cached.createdAt).toISOString(),
+                 expiresAt: new Date(cached.createdAt + CACHE_TTL_MINUTES * 60 * 1000).toISOString() }
       });
     }
 
-    const all = await fetchAllSoccer();
-    const filteredEvents = all.filter(ev => eventRomeDate(ev.commence_time) === date);
-    const matches = filteredEvents.map(normalizeOddsEvent).filter(m => m.home && m.away);
+    let matches;
+    let source;
 
-    cache.set(key, {createdAt:Date.now(), matches});
+    if (USE_MOCK) {
+      // ── MODALITÀ MOCK: zero chiamate API ──
+      matches = generateMockMatches(date);
+      source  = "mock";
+      console.log(`[MOCK] Generati ${matches.length} match simulati per ${date}`);
+    } else {
+      // ── MODALITÀ REALE: API-Football ──
+      console.log(`[API-Football] Fetch fixtures per ${date}`);
+      const data     = await safeApiFootballCall(`/fixtures?date=${date}`);
+      const fixtures = (data.response || []);
+      matches        = fixtures.map(normalizeApiFootballFixture);
+      source         = "api-football";
+      console.log(`[API-Football] ${matches.length} partite ricevute — chiamate oggi: ${apiCallsToday}`);
+    }
+
+    cache.set(key, { createdAt: Date.now(), matches, source });
 
     res.json({
-      date,
-      count:matches.length,
-      matches,
-      source:"the-odds-api",
-      apiCallsToday,
-      rawEvents:all.length,
-      cache:{hit:false, createdAt:new Date().toISOString()}
+      date, count: matches.length, matches, source, apiCallsToday,
+      cache: { hit: false, createdAt: new Date().toISOString(),
+               expiresAt: new Date(Date.now() + CACHE_TTL_MINUTES * 60 * 1000).toISOString() }
     });
-  }catch(error){
-    res.status(500).json({error:error.message, apiCallsToday});
+
+  } catch (error) {
+    // fallback su cache vecchia in caso di errore
+    const date   = req.query.date || localDateRome(0);
+    const cached = cache.get(getCacheKey(date));
+    if (cached) {
+      return res.json({
+        date, count: cached.matches.length, matches: cached.matches,
+        source: "stale-cache", warning: error.message, apiCallsToday
+      });
+    }
+    console.error("[ERRORE]", error.message);
+    res.status(500).json({ error: error.message, apiCallsToday });
   }
 });
 
-app.listen(PORT, HOST, ()=>{
-  console.log(`Kickora The Odds API all soccer attivo su http://${HOST}:${PORT}`);
-  console.log(`Sports configured: ${ALL_SOCCER_SPORTS.length}`);
-  console.log(`Cache TTL: ${CACHE_TTL_MINUTES} min`);
+// ─── START ────────────────────────────────────────────────────────────────────
+app.listen(PORT, HOST, () => {
+  console.log(`\nKICKORA in ascolto su http://${HOST}:${PORT}`);
+  console.log(`Modalità: ${USE_MOCK ? "⚠️  MOCK (dati simulati)" : "✅  API-Football REALE"}`);
+  console.log(`Cache TTL: ${CACHE_TTL_MINUTES} minuti`);
+  if (!USE_MOCK) console.log(`Rate limit interno: max ${MAX_PER_MINUTE} req/min, intervallo min ${MIN_INTERVAL_MS/1000}s`);
 });

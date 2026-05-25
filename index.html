@@ -1236,13 +1236,14 @@ async function checkLiveSystem(){
   try{
     const res = await fetch('/api/health', { cache:'no-store' });
     const data = await res.json();
-    const ok = data.oddsApiConfigured === true;
+    const ok   = data.apiFootballConfigured === true;
+    const mock = data.useMock === true;
 
     if(el('liveConnStatus')){
-      el('liveConnStatus').textContent = ok ? 'API CONNESSA' : 'API OFFLINE';
-      el('liveConnStatus').className = ok ? 'api-status ready' : 'api-status demo';
+      el('liveConnStatus').textContent = mock ? 'MOCK ATTIVO' : ok ? 'API CONNESSA' : 'API OFFLINE';
+      el('liveConnStatus').className   = mock ? 'api-status demo' : ok ? 'api-status ready' : 'api-status demo';
     }
-    if(el('liveApiState')) el('liveApiState').textContent = ok ? 'Online' : 'Offline';
+    if(el('liveApiState')) el('liveApiState').textContent = mock ? 'Mock' : ok ? 'Online' : 'Offline';
     if(el('liveCacheStatus')) el('liveCacheStatus').textContent = data.cacheTtlMinutes ? data.cacheTtlMinutes + ' min' : '—';
     if(el('liveCallsStatus')) el('liveCallsStatus').textContent = (data.apiCallsToday ?? 0) + '/100';
     if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
@@ -1264,9 +1265,6 @@ async function bootLiveMatches(){
   if(location.protocol === 'file:') return;
 
   await loadRange('today');
-
-  const badge = document.querySelector('.badge');
-  if(badge) badge.textContent = 'LIVE ODDS';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1348,7 +1346,7 @@ async function kickoraLoadLive(range='today'){
     kickoraRenderAllLive();
     if(typeof checkLiveSystem==='function') await checkLiveSystem();
     const badge = document.querySelector('.badge');
-    if(badge) badge.textContent = 'LIVE ODDS';
+    if(badge) badge.textContent = data.isMock ? 'DATI SIMULATI' : 'LIVE API';
   }catch(err){
     console.error('KICKORA ODDS ERROR', err);
     kickoraShowEmpty('Errore nel caricamento The Odds API');
