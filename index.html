@@ -14,19 +14,6 @@
 .new-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .new-panel-title{font-size:16px;font-weight:900}
 .new-panel-note{color:var(--muted);font-size:12px;margin-top:12px}
-.h2h-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
-.h2h-stat{background:rgba(2,6,23,.5);border:1px solid var(--border);border-radius:14px;padding:10px;text-align:center}
-.h2h-stat span{display:block;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
-.h2h-stat b{font-size:20px;font-weight:950}
-.h2h-list{display:grid;gap:8px}
-.h2h-row{display:grid;grid-template-columns:70px 1fr auto auto;gap:8px;align-items:center;background:rgba(2,6,23,.4);border-radius:12px;padding:10px 12px;border:1px solid rgba(148,163,184,.10)}
-.h2h-date{color:var(--muted);font-size:11px}
-.h2h-teams{font-size:13px;font-weight:700}
-.h2h-score{font-size:15px;text-align:center}
-.h2h-badges{display:flex;gap:4px}
-.mini-badge{font-size:10px;font-weight:900;border-radius:6px;padding:2px 6px}
-.mini-badge.gg{background:rgba(167,139,250,.2);color:#a78bfa}
-.mini-badge.ov{background:rgba(34,211,238,.2);color:#22d3ee}
 .trend-profile{display:flex;align-items:center;gap:10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:10px 14px;margin-top:10px;font-size:14px}
 .trend-profile b{font-size:16px;margin-left:auto}
 .ranking-list{display:grid;gap:8px;margin-top:4px}
@@ -986,51 +973,6 @@ function xgInput(prefix, id, label, value, isAuto){
   </div>`;
 }
 
-// ─── H2H ─────────────────────────────────────────────────────────────────────
-function buildH2H(m){
-  // Mock realistico — con API-Football verrà sostituito da dati reali
-  const results = [
-    {home:m.home, away:m.away, gh:2, ga:1, date:'12/01/25'},
-    {home:m.away, away:m.home, gh:1, ga:1, date:'05/10/24'},
-    {home:m.home, away:m.away, gh:3, ga:2, date:'18/04/24'},
-    {home:m.away, away:m.home, gh:0, ga:1, date:'20/01/24'},
-    {home:m.home, away:m.away, gh:2, ga:0, date:'08/10/23'},
-  ];
-  const ggCount  = results.filter(r=>r.gh>0&&r.ga>0).length;
-  const ov25Count= results.filter(r=>r.gh+r.ga>2).length;
-  const avgGol   = (results.reduce((s,r)=>s+r.gh+r.ga,0)/results.length).toFixed(1);
-  const homeWins = results.filter(r=>r.home===m.home&&r.gh>r.ga).length + results.filter(r=>r.away===m.home&&r.ga>r.gh).length;
-
-  return `<div class="new-panel">
-    <div class="new-panel-head">
-      <span class="new-panel-title">⚔️ Head to Head</span>
-      <span class="chip cyan">ULTIMI 5</span>
-    </div>
-    <div class="h2h-stats">
-      <div class="h2h-stat"><span>Media gol</span><b>${avgGol}</b></div>
-      <div class="h2h-stat"><span>GG</span><b>${ggCount}/5</b></div>
-      <div class="h2h-stat"><span>Over 2.5</span><b>${ov25Count}/5</b></div>
-      <div class="h2h-stat"><span>Vittorie ${m.home.split(' ')[0]}</span><b>${homeWins}/5</b></div>
-    </div>
-    <div class="h2h-list">
-      ${results.map(r=>{
-        const tot=r.gh+r.ga;
-        const gg=r.gh>0&&r.ga>0;
-        const isHome=r.home===m.home;
-        const win=(isHome&&r.gh>r.ga)||(!isHome&&r.ga>r.gh);
-        const color=win?'#22d3ee':r.gh===r.ga?'#facc15':'#f472b6';
-        return `<div class="h2h-row">
-          <span class="h2h-date">${r.date}</span>
-          <span class="h2h-teams">${r.home} vs ${r.away}</span>
-          <span class="h2h-score" style="color:${color};font-weight:900">${r.gh}–${r.ga}</span>
-          <span class="h2h-badges">${gg?'<span class="mini-badge gg">GG</span>':''}${tot>2?'<span class="mini-badge ov">O2.5</span>':''}</span>
-        </div>`;
-      }).join('')}
-    </div>
-    <p class="new-panel-note">⚠️ Dati simulati — con API-Football si compileranno automaticamente</p>
-  </div>`;
-}
-
 // ─── TREND CAMPIONATO ─────────────────────────────────────────────────────────
 function buildLeagueTrend(m){
   const compMatches = filtered.filter(x=>x.comp===m.comp);
@@ -1279,7 +1221,7 @@ function renderAnalysis(){
       ${bar('GG',m.p.gg)}
     </div>
 
-    ${buildRadarChart(m)}${buildSimulator(m)}${buildProPanel(m)}${buildH2H(m)}${buildLeagueTrend(m)}${buildWeather(m)}<div id="manualXGMount">${buildManualXG(m)}</div>${buildRanking()}
+    ${buildRadarChart(m)}${buildSimulator(m)}${buildProPanel(m)}${buildLeagueTrend(m)}${buildWeather(m)}<div id="manualXGMount">${buildManualXG(m)}</div>${buildRanking()}
   `;
 }
 
@@ -1429,6 +1371,10 @@ function bindMatchClicks(){
 
 function selectMatch(id){
   hardSelectMatch(id);
+  setTimeout(()=>{
+    const target = document.getElementById('analysis');
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 120);
 }
 
 function applyFilters(){
