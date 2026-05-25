@@ -370,85 +370,13 @@ button,select,input{font-family:inherit}
 .xg-input-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .xg-field label{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:5px}
 .xg-field input{width:100%;box-sizing:border-box;background:rgba(15,23,42,.82);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:10px}
-.xg-results{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.xg-results{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
 .xg-result-card{background:rgba(15,23,42,.58);border:1px solid var(--border);border-radius:18px;padding:14px;text-align:center}
 .xg-result-card span{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}
 .xg-result-card b{display:block;font-size:28px;margin-top:5px}
 .xg-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .xg-note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:10px}
 @media(max-width:950px){.xg-manual-grid,.xg-results{grid-template-columns:1fr}.xg-input-grid{grid-template-columns:1fr}}
-
-
-.floating-match-nav{
-  position:fixed;
-  right:22px;
-  bottom:28px;
-  z-index:9998;
-  display:grid;
-  gap:8px;
-  background:rgba(2,6,23,.72);
-  border:1px solid rgba(34,211,238,.28);
-  box-shadow:0 18px 45px rgba(0,0,0,.38);
-  backdrop-filter:blur(14px);
-  border-radius:18px;
-  padding:10px;
-}
-.floating-match-nav button{
-  width:44px;
-  height:40px;
-  border-radius:12px;
-  border:1px solid rgba(34,211,238,.28);
-  background:rgba(15,23,42,.88);
-  color:var(--cyan);
-  font-weight:1000;
-  cursor:pointer;
-  font-size:18px;
-}
-.floating-match-nav button:hover{
-  border-color:rgba(34,211,238,.75);
-  box-shadow:0 0 20px rgba(34,211,238,.18);
-}
-.match-position{
-  color:var(--muted);
-  text-align:center;
-  font-size:11px;
-  font-weight:950;
-}
-.score-advice-box{
-  margin-top:16px;
-  border:1px solid rgba(34,197,94,.25);
-  background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(34,211,238,.06));
-  border-radius:22px;
-  padding:16px;
-}
-.score-advice-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:12px;
-  margin-top:12px;
-}
-.score-advice-card{
-  background:rgba(2,6,23,.48);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:14px;
-}
-.score-advice-card span{
-  display:block;
-  font-size:11px;
-  font-weight:950;
-  color:var(--muted);
-  text-transform:uppercase;
-}
-.score-advice-card b{
-  display:block;
-  font-size:22px;
-  margin-top:5px;
-}
-@media(max-width:760px){
-  .floating-match-nav{right:12px;bottom:14px}
-  .score-advice-grid{grid-template-columns:1fr}
-}
 
 </style>
 </head>
@@ -1044,7 +972,7 @@ function buildManualXG(m){
 }
 
 function renderAnalysis(){
-  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}${buildScoreAdvice(m)}</div></div>`}
+  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}</div></div>`}
 
 
 function showKickoraError(msg, err=null){
@@ -1103,64 +1031,11 @@ function renderEmptyState(message='Nessuna partita trovata per il periodo selezi
   if(el('matchList')) el('matchList').innerHTML = `<div class="empty-state"><b>Nessuna partita</b><span>${message}</span></div>`;
   if(el('analysis')) el('analysis').innerHTML = `<div class="empty-state"><b>Nessuna analisi disponibile</b><span>${message}</span></div>`;
   updateFeedback();
-  updateMatchPosition();
 }
 
-async function loadRange(range='today'){
-  activeDateRange = range;
-  setActiveDateButton(range);
+async 
 
-  if(location.protocol === 'file:') return;
 
-  const dates = range === 'today' ? [isoDateOffset(0)] : [isoDateOffset(1)];
-
-  try{
-    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = 'carico...';
-
-    const chunks = [];
-    for(const date of dates){
-      const rows = await fetchMatchesByDate(date);
-      chunks.push(...rows);
-    }
-
-    if(!chunks.length){
-      const label = range === 'tomorrow' ? 'Nessuna partita trovata per domani' : 'Nessuna partita trovata per oggi';
-      matchesData = [];
-      populateCompetitions();
-      renderEmptyState(label);
-      if(typeof checkLiveSystem === 'function') await checkLiveSystem();
-      return;
-    }
-
-    matchesData = chunks.map(normalizeKickoraLiveMatch);
-    filtered = sortMatches([...matchesData]);
-    current = filtered[0] || matchesData[0];
-
-    populateCompetitions();
-    renderKPIs();
-    renderTopPicks();
-    if(typeof buildAiAlerts === 'function') buildAiAlerts();
-    renderMatches();
-    renderAnalysis();
-    updateFeedback();
-  updateMatchPosition();
-    bindMatchClicks();
-    if(typeof checkLiveSystem === 'function') await checkLiveSystem();
-
-    console.log('KICKORA RANGE OK', {range, count: matchesData.length});
-  }catch(err){
-    renderEmptyState('Errore nel caricamento del periodo selezionato');
-    console.error('Errore caricamento periodo', err);
-  }
-}
-
-function setupDateFilters(){
-  document.querySelectorAll('.date-filter-btn').forEach(btn => {
-    if(btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', () => loadRange(btn.dataset.range));
-  });
-}
 
 function hardSelectMatch(id){
   const targetId = String(id);
@@ -1179,7 +1054,6 @@ function hardSelectMatch(id){
   if(typeof buildAiAlerts === 'function') buildAiAlerts();
   renderAnalysis();
   updateFeedback();
-  updateMatchPosition();
   bindMatchClicks();
 
   console.log('KICKORA SELECT', current.home, current.away, current.id);
@@ -1191,80 +1065,6 @@ function bindMatchClicks(){
     card.dataset.bound = '1';
     card.addEventListener('click', () => hardSelectMatch(card.dataset.matchId));
   });
-}
-
-
-function currentMatchIndex(){
-  if(!current || !filtered?.length) return -1;
-  return filtered.findIndex(m => String(m.id) === String(current.id));
-}
-
-function updateMatchPosition(){
-  const box = el('matchPosition');
-  if(!box) return;
-  const idx = currentMatchIndex();
-  box.textContent = idx >= 0 ? `${idx+1}/${filtered.length}` : `0/${filtered?.length || 0}`;
-}
-
-function goPrevMatch(){
-  if(!filtered?.length) return;
-  const idx = currentMatchIndex();
-  const nextIdx = idx <= 0 ? filtered.length - 1 : idx - 1;
-  selectMatch(filtered[nextIdx].id);
-  scrollCurrentMatchIntoView();
-}
-
-function goNextMatch(){
-  if(!filtered?.length) return;
-  const idx = currentMatchIndex();
-  const nextIdx = idx < 0 || idx >= filtered.length - 1 ? 0 : idx + 1;
-  selectMatch(filtered[nextIdx].id);
-  scrollCurrentMatchIntoView();
-}
-
-function scrollCurrentMatchIntoView(){
-  setTimeout(() => {
-    const active = document.querySelector('.match.active');
-    if(active) active.scrollIntoView({behavior:'smooth', block:'center'});
-  }, 50);
-}
-
-function buildScoreAdvice(m){
-  const home = m.p?.h || 0;
-  const away = m.p?.a || 0;
-  const over25 = m.p?.over25 || 0;
-  const gg = m.p?.gg || 0;
-
-  let score1 = '1-1';
-  let score2 = '2-1';
-  let scenario = 'Gara equilibrata';
-
-  if(over25 >= 65 && gg >= 60){
-    score1 = home >= away ? '2-1' : '1-2';
-    score2 = '2-2';
-    scenario = 'Gara aperta con entrambe a segno';
-  } else if(over25 >= 55){
-    score1 = home >= away ? '2-0' : '0-2';
-    score2 = home >= away ? '2-1' : '1-2';
-    scenario = 'Possibile gara da almeno 2 reti';
-  } else if(gg < 48){
-    score1 = home >= away ? '1-0' : '0-1';
-    score2 = '0-0';
-    scenario = 'Scenario più chiuso';
-  } else {
-    score1 = home >= away ? '1-1 / 2-1' : '1-1 / 1-2';
-    score2 = '2-2';
-    scenario = 'Equilibrio con goal possibile';
-  }
-
-  return `<div class="score-advice-box">
-    <h2>Consiglio Risultato</h2>
-    <div class="score-advice-grid">
-      <div class="score-advice-card"><span>Scenario</span><b>${scenario}</b></div>
-      <div class="score-advice-card"><span>Score principale</span><b>${score1}</b></div>
-      <div class="score-advice-card"><span>Alternativa</span><b>${score2}</b></div>
-    </div>
-  </div>`;
 }
 
 function selectMatch(id){
@@ -1294,7 +1094,6 @@ function applyFilters(){
   bindMatchClicks();
   renderAnalysis();
   updateFeedback();
-  updateMatchPosition();
 }
 
 function resetFilters(){
@@ -1317,7 +1116,6 @@ function resetFilters(){
   bindMatchClicks();
   renderAnalysis();
   updateFeedback();
-  updateMatchPosition();
 }
 
 function safeNumber(v, fallback=0){
@@ -1406,16 +1204,104 @@ async function checkLiveSystem(){
   }
 }
 
+
+function localDateOffset(days=0){
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function setDateButtons(range){
+  document.querySelectorAll('.date-filter-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.range === range);
+  });
+}
+
+async function fetchKickoraDate(range='today'){
+  setDateButtons(range);
+  const date = range === 'tomorrow' ? localDateOffset(1) : localDateOffset(0);
+
+  const res = await fetch('/api/matches/today?date=' + encodeURIComponent(date), { cache:'no-store' });
+  const data = await res.json();
+
+  if(!res.ok) throw new Error(data.error || 'Errore API');
+  return { data, date };
+}
+
+function showNoMatches(message){
+  matchesData = [];
+  filtered = [];
+  current = null;
+
+  if(el('kpiMatches')) el('kpiMatches').textContent = 0;
+  if(el('kpiSafe')) el('kpiSafe').textContent = 0;
+  if(el('kpiValue')) el('kpiValue').textContent = 0;
+  if(el('kpiOver')) el('kpiOver').textContent = '0%';
+
+  const box = `<div class="empty-state"><b>${message}</b><span>L’API è connessa, ma non ha restituito partite per questa data.</span></div>`;
+  if(el('topPicks')) el('topPicks').innerHTML = box;
+  if(el('matchList')) el('matchList').innerHTML = box;
+  if(el('analysis')) el('analysis').innerHTML = box;
+  if(el('aiAlerts')) el('aiAlerts').innerHTML = '';
+  updateFeedback();
+}
+
+async function loadRange(range='today'){
+  try{
+    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = 'carico...';
+
+    const { data, date } = await fetchKickoraDate(range);
+    const rows = Array.isArray(data.matches) ? data.matches : [];
+
+    console.log('KICKORA DATE LOAD', {range, date, apiCount:data.count, rows:rows.length, source:data.source});
+
+    if(!rows.length){
+      showNoMatches(range === 'tomorrow' ? 'Nessuna partita trovata per domani' : 'Nessuna partita trovata per oggi');
+      if(typeof checkLiveSystem === 'function') await checkLiveSystem();
+      return;
+    }
+
+    matchesData = rows.map(normalizeKickoraLiveMatch);
+    filtered = sortMatches([...matchesData]);
+    current = filtered[0] || matchesData[0];
+
+    populateCompetitions();
+    renderKPIs();
+    renderTopPicks();
+    if(typeof buildAiAlerts === 'function') buildAiAlerts();
+    renderMatches();
+    renderAnalysis();
+    updateFeedback();
+    if(typeof bindMatchClicks === 'function') bindMatchClicks();
+    if(typeof updateMatchPosition === 'function') updateMatchPosition();
+    if(typeof checkLiveSystem === 'function') await checkLiveSystem();
+
+  }catch(err){
+    console.error('KICKORA LOAD ERROR', err);
+    showNoMatches('Errore nel caricamento partite');
+  }
+}
+
+function setupDateFilters(){
+  document.querySelectorAll('.date-filter-btn').forEach(btn=>{
+    if(btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', ()=>loadRange(btn.dataset.range));
+  });
+}
+
 async function bootLiveMatches(){
   console.log('KICKORA BOOT START');
-  resetFilters();
-  setupDateFilters();
-  await checkLiveSystem();
-
-  if(location.protocol === 'file:') return;
-
+  if(typeof setupDateFilters === 'function') setupDateFilters();
+  if(typeof checkLiveSystem === 'function') await checkLiveSystem();
+  if(location.protocol === 'file:') {
+    resetFilters();
+    return;
+  }
   await loadRange('today');
-
   const badge = document.querySelector('.badge');
   if(badge) badge.textContent = 'LIVE API';
 }
