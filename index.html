@@ -533,28 +533,35 @@ function radarValue(seed, min, max){
 
 function buildRadarChart(m){
   const home = {
-    form: radarValue(m.p.h/100,60,96),
-    attack: radarValue(m.p.over15/100,58,95),
-    defense: radarValue((100-m.p.gg)/100,50,92),
-    xg: radarValue(m.xgH/3,55,94),
+    form:      radarValue(m.p.h/100,60,96),
+    attack:    radarValue(m.p.over15/100,58,95),
+    defense:   radarValue((100-m.p.gg)/100,50,92),
+    xg:        radarValue(m.xgH/3,55,94),
     stability: kickoraScore(m),
-    pressure: radarValue(m.p.corners75/100,52,93)
+    pressure:  radarValue(m.p.over25/100,52,93)
   };
-
   const away = {
-    form: radarValue(m.p.a/100,55,90),
-    attack: radarValue(m.p.gg/100,54,92),
-    defense: radarValue((100-m.p.over25)/100,48,88),
-    xg: radarValue(m.xgA/3,52,90),
+    form:      radarValue(m.p.a/100,55,90),
+    attack:    radarValue(m.p.gg/100,54,92),
+    defense:   radarValue((100-m.p.over25)/100,48,88),
+    xg:        radarValue(m.xgA/3,52,90),
     stability: Math.max(45,kickoraScore(m)-8),
-    pressure: radarValue(m.p.cards25/100,50,88)
+    pressure:  radarValue(m.p.u25/100,50,88)
   };
 
   const labels=['Forma','Attacco','Difesa','xG','Stabilità','Pressione'];
-  const keys=['form','attack','defense','xg','stability','pressure'];
+  const keys  =['form','attack','defense','xg','stability','pressure'];
   const cx=210, cy=210, r=150;
 
-  function points(obj){
+  // punteggio sintetico 0-100
+  const homeScore = Math.round(keys.reduce((s,k)=>s+home[k],0)/keys.length);
+  const awayScore = Math.round(keys.reduce((s,k)=>s+away[k],0)/keys.length);
+
+  // asse dominante casa
+  const dominantKey = keys.reduce((best,k)=> home[k]-away[k] > home[best]-away[best] ? k : best, keys[0]);
+  const dominantLabel = labels[keys.indexOf(dominantKey)];
+
+  function pts(obj){
     return keys.map((k,i)=>{
       const angle=(Math.PI*2/keys.length)*i-Math.PI/2;
       const val=(obj[k]/100)*r;
@@ -562,32 +569,75 @@ function buildRadarChart(m){
     }).join(' ');
   }
 
+  // griglia esagonale di sfondo (3 livelli)
+  function hexGrid(pct){
+    return keys.map((k,i)=>{
+      const angle=(Math.PI*2/keys.length)*i-Math.PI/2;
+      return `${cx+Math.cos(angle)*r*pct},${cy+Math.sin(angle)*r*pct}`;
+    }).join(' ');
+  }
+
   const axes = keys.map((k,i)=>{
     const angle=(Math.PI*2/keys.length)*i-Math.PI/2;
-    const x=cx+Math.cos(angle)*(r+25);
-    const y=cy+Math.sin(angle)*(r+25);
     const lx=cx+Math.cos(angle)*r;
     const ly=cy+Math.sin(angle)*r;
-    return `<line x1="${cx}" y1="${cy}" x2="${lx}" y2="${ly}" stroke="rgba(148,163,184,.25)"/>
-            <text x="${x}" y="${y}" fill="#94a3b8" font-size="12" text-anchor="middle">${labels[i]}</text>`;
+    // label
+    const tx=cx+Math.cos(angle)*(r+30);
+    const ty=cy+Math.sin(angle)*(r+30);
+    // valore % sul vertice (media casa/trasferta)
+    const avg=Math.round((home[k]+away[k])/2);
+    const vx=cx+Math.cos(angle)*(r+14);
+    const vy=cy+Math.sin(angle)*(r+14);
+    const isDominant = k===dominantKey;
+    return `
+      <line x1="${cx}" y1="${cy}" x2="${lx}" y2="${ly}" stroke="rgba(148,163,184,.22)" stroke-width="1"/>
+      <text x="${tx}" y="${ty}" fill="${isDominant?'#22d3ee':'#94a3b8'}" font-size="12" font-weight="${isDominant?'900':'400'}" text-anchor="middle" dominant-baseline="middle">${labels[i]}</text>
+      <text x="${vx}" y="${vy}" fill="${isDominant?'#22d3ee':'rgba(148,163,184,.6)'}" font-size="9" text-anchor="middle" dominant-baseline="middle">${avg}%</text>`;
   }).join('');
+
+  const lettura = homeScore > awayScore + 6
+    ? `${m.home} domina strutturalmente (+${homeScore-awayScore} pts). Edge principale: <b>${dominantLabel}</b>.`
+    : awayScore > homeScore + 6
+    ? `${m.away} superiore in trasferta (+${awayScore-homeScore} pts). Attenzione all'edge su <b>${dominantLabel}</b>.`
+    : `Confronto equilibrato (${homeScore} vs ${awayScore}). Edge minimo su <b>${dominantLabel}</b>.`;
 
   return `<div class="radar-box">
     <h2>Radar Statistico</h2>
     <div class="radar-wrap">
       <svg class="radar-svg" viewBox="0 0 420 420">
+        <polygon points="${hexGrid(0.33)}" fill="none" stroke="rgba(148,163,184,.10)" stroke-width="1"/>
+        <polygon points="${hexGrid(0.66)}" fill="none" stroke="rgba(148,163,184,.10)" stroke-width="1"/>
+        <polygon points="${hexGrid(1)}"    fill="none" stroke="rgba(148,163,184,.15)" stroke-width="1"/>
         ${axes}
-        <polygon points="${points(home)}" fill="rgba(34,211,238,.20)" stroke="#22d3ee" stroke-width="3"/>
-        <polygon points="${points(away)}" fill="rgba(244,114,182,.18)" stroke="#f472b6" stroke-width="3"/>
+        <polygon points="${pts(home)}" fill="rgba(34,211,238,.18)" stroke="#22d3ee" stroke-width="2.5"/>
+        <polygon points="${pts(away)}" fill="rgba(244,114,182,.15)" stroke="#f472b6" stroke-width="2.5"/>
       </svg>
       <div class="radar-legend">
-        <div class="legend-card"><span class="legend-dot" style="background:#22d3ee"></span><b>${m.home}</b><br>Profilo statistico casa</div>
-        <div class="legend-card"><span class="legend-dot" style="background:#f472b6"></span><b>${m.away}</b><br>Profilo statistico trasferta</div>
-        <div class="legend-card"><b>Lettura</b><br>${home.stability>away.stability?`${m.home} mostra superiorità strutturale.`:`Confronto equilibrato con edge limitato.`}</div>
+        <div class="legend-card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="legend-dot" style="background:#22d3ee"></span>
+            <b>${m.home}</b>
+            <span style="margin-left:auto;background:rgba(34,211,238,.18);color:#22d3ee;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:900">${homeScore}</span>
+          </div>
+          <span style="color:var(--muted);font-size:12px">Profilo statistico casa</span>
+        </div>
+        <div class="legend-card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="legend-dot" style="background:#f472b6"></span>
+            <b>${m.away}</b>
+            <span style="margin-left:auto;background:rgba(244,114,182,.18);color:#f472b6;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:900">${awayScore}</span>
+          </div>
+          <span style="color:var(--muted);font-size:12px">Profilo statistico trasferta</span>
+        </div>
+        <div class="legend-card" style="border-color:rgba(34,211,238,.25)">
+          <b style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Lettura</b>
+          <p style="margin-top:6px;font-size:13px;line-height:1.5">${lettura}</p>
+        </div>
       </div>
     </div>
   </div>`;
 }
+
 
 function buildSimulator(m){
   const total = 1000000;
