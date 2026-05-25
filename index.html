@@ -797,24 +797,7 @@ function buildAiAlerts(){
 
 function renderTopPicks(){
   const list = sortMatches(filtered).slice(0,6);
-  el('topPicks').innerHTML = `<h2>Miglior Picks dinamiche</h2><div class="top-grid">` + list.map(m=>{
-    const s=kickoraScore(m), tier=scoreTier(s);
-    return `<div class="top-card" data-match-id="${String(m.id)}">
-      <small>${m.comp} · ${m.time}</small>
-      <strong>${m.home} vs ${m.away}</strong>
-      <div class="top-line">
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <span class="chip good">${m.safe}</span>
-          ${riskBadge(m.risk)}
-        </div>
-        <div style="text-align:center">
-          <div class="score-ring" style="--score:${s}"><b>${s}</b></div>
-          <div class="score-label ${tier.cls}">${tier.txt}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:1px">SCORE</div>
-        </div>
-      </div>
-    </div>`;
-  }).join(') + `</div>`;
+  el('topPicks').innerHTML = `<h2>Miglior Picks dinamiche</h2><div class="top-grid">` + list.map(m=>{ const s=kickoraScore(m), tier=scoreTier(s); return `<div class="top-card" data-match-id="${String(m.id)}"><small>${m.comp} · ${m.time}</small><strong>${m.home} vs ${m.away}</strong><div class="top-line"><div style="display:flex;flex-direction:column;gap:5px"><span class="chip good">${m.safe}</span>${riskBadge(m.risk)}</div><div style="text-align:center"><div class="score-ring" style="--score:${s}"><b>${s}</b></div><div class="score-label ${tier.cls}">${tier.txt}</div><div style="font-size:10px;color:var(--muted);margin-top:1px">SCORE</div></div></div></div>`; }).join('') + `</div>`;
 }
 function updateFeedback(){
   const market = el('market').value;
