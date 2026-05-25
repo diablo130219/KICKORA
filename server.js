@@ -15,10 +15,11 @@ app.use(express.static("."));
 const ODDS_API_KEY = process.env.ODDS_API_KEY;
 const ODDS_API_BASE = process.env.ODDS_API_BASE || "https://api.the-odds-api.com/v4";
 const ODDS_REGIONS = process.env.ODDS_REGIONS || "eu";
-const ODDS_MARKETS = process.env.ODDS_MARKETS || "h2h,totals,btts";
+const ODDS_MARKETS = process.env.ODDS_MARKETS || "h2h,totals";
 const ODDS_FORMAT = process.env.ODDS_FORMAT || "decimal";
-const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 720);
-const MAX_PARALLEL = Number(process.env.MAX_PARALLEL || 6);
+const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 1440);
+const MAX_PARALLEL = Number(process.env.MAX_PARALLEL || 1);
+const ODDS_REQUEST_DELAY_MS = Number(process.env.ODDS_REQUEST_DELAY_MS || 1200);
 
 const ALL_SOCCER_SPORTS = [
   "soccer_africa_cup_of_nations",
@@ -93,6 +94,8 @@ const ALL_SOCCER_SPORTS = [
 const cache = new Map();
 let apiCallsToday = 0;
 let apiCallsDay = new Date().toISOString().slice(0,10);
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function resetDailyCounterIfNeeded(){
   const today = new Date().toISOString().slice(0,10);
@@ -280,24 +283,48 @@ function normalizeOddsEvent(ev){
 
 async function oddsRequestSport(sport){
   resetDailyCounterIfNeeded();
-  const params = new URLSearchParams({
-    apiKey: ODDS_API_KEY,
-    regions: ODDS_REGIONS,
-    markets: ODDS_MARKETS,
-    oddsFormat: ODDS_FORMAT,
-    dateFormat: "iso"
-  });
-  const url = `${ODDS_API_BASE}/sports/${sport}/odds?${params.toString()}`;
-  const res = await fetch(url);
-  apiCallsToday += 1;
 
-  if(res.status === 404) return [];
-  if(!res.ok){
-    const text = await res.text();
-    console.warn("The Odds API error", sport, res.status, text.slice(0,200));
-    return [];
+  async function doRequest(){
+    const params = new URLSearchParams({
+      apiKey: ODDS_API_KEY,
+      regions: ODDS_REGIONS,
+      markets: ODDS_MARKETS,
+      oddsFormat: ODDS_FORMAT,
+      dateFormat: "iso"
+    });
+    const url = `${ODDS_API_BASE}/sports/${sport}/odds?${params.toString()}`;
+    const res = await fetch(url);
+    apiCallsToday += 1;
+
+    if(res.status === 404) return [];
+    if(res.status === 422){
+      const text = await res.text();
+      console.warn("The Odds API market non supportato", sport, text.slice(0,160));
+      return [];
+    }
+    if(res.status === 429){
+      console.warn("The Odds API frequency limit, retry lento", sport);
+      await sleep(3500);
+      const retry = await fetch(url);
+      apiCallsToday += 1;
+      if(!retry.ok){
+        const text = await retry.text();
+        console.warn("The Odds API retry fallito", sport, retry.status, text.slice(0,160));
+        return [];
+      }
+      return retry.json();
+    }
+    if(!res.ok){
+      const text = await res.text();
+      console.warn("The Odds API error", sport, res.status, text.slice(0,160));
+      return [];
+    }
+    return res.json();
   }
-  return res.json();
+
+  const out = await doRequest();
+  await sleep(ODDS_REQUEST_DELAY_MS);
+  return out;
 }
 
 async function fetchAllSoccer(){
@@ -306,10 +333,13 @@ async function fetchAllSoccer(){
   const results = [];
   for(let i=0; i<ALL_SOCCER_SPORTS.length; i += MAX_PARALLEL){
     const chunk = ALL_SOCCER_SPORTS.slice(i, i+MAX_PARALLEL);
+
     const settled = await Promise.allSettled(chunk.map(s => oddsRequestSport(s)));
     settled.forEach((r, idx) => {
       if(r.status === "fulfilled" && Array.isArray(r.value)){
         results.push(...r.value.map(ev => ({...ev, sport_key: chunk[idx]})));
+      } else if(r.status === "rejected"){
+        console.warn("Sport skipped", chunk[idx], r.reason?.message || r.reason);
       }
     });
   }
@@ -326,7 +356,10 @@ app.get("/api/health", (req,res)=>{
     supabaseConfigured:false,
     cacheTtlMinutes:CACHE_TTL_MINUTES,
     apiCallsToday,
-    sportsConfigured:ALL_SOCCER_SPORTS.length
+    sportsConfigured:ALL_SOCCER_SPORTS.length,
+    markets:ODDS_MARKETS,
+    requestDelayMs:ODDS_REQUEST_DELAY_MS,
+    maxParallel:MAX_PARALLEL
   });
 });
 
