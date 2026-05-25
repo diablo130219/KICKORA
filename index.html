@@ -640,56 +640,117 @@ function buildRadarChart(m){
 
 
 function buildSimulator(m){
-  const total = 1000000;
   const homeEdge = Math.max(0, m.p.h - m.p.a);
   const awayEdge = Math.max(0, m.p.a - m.p.h);
+  const isOpen   = m.p.over25 >= 62 && m.p.gg >= 58;
+  const isClosed = m.p.u25 >= 55 || m.p.ng >= 55;
   let scores = [];
 
-  if(m.p.over25 >= 62 && m.p.gg >= 58){
+  if(isOpen){
     scores = [
       {s:'2-1', p:18 + Math.round(homeEdge/8)},
       {s:'1-2', p:14 + Math.round(awayEdge/8)},
       {s:'2-2', p:13},
-      {s:'3-1', p:10 + Math.round(m.p.over25/18)}
+      {s:'3-1', p:10 + Math.round(m.p.over25/18)},
+      {s:'1-3', p:8  + Math.round(awayEdge/10)},
+      {s:'2-3', p:7}
     ];
-  } else if(m.p.u25 >= 55 || m.p.ng >= 55){
+  } else if(isClosed){
     scores = [
       {s:'1-0', p:19 + Math.round(homeEdge/7)},
       {s:'1-1', p:17},
       {s:'0-0', p:10 + Math.round(m.p.u25/12)},
-      {s:'2-0', p:11 + Math.round(homeEdge/10)}
+      {s:'2-0', p:11 + Math.round(homeEdge/10)},
+      {s:'0-1', p:8  + Math.round(awayEdge/10)},
+      {s:'2-1', p:7}
     ];
   } else {
     scores = [
       {s:'1-1', p:18},
       {s:'2-1', p:15 + Math.round(homeEdge/9)},
       {s:'1-0', p:14 + Math.round(homeEdge/10)},
-      {s:'0-1', p:10 + Math.round(awayEdge/9)}
+      {s:'0-1', p:10 + Math.round(awayEdge/9)},
+      {s:'2-2', p:9},
+      {s:'1-2', p:8  + Math.round(awayEdge/10)}
     ];
   }
 
-  scores = scores.sort((a,b)=>b.p-a.p).slice(0,4);
+  scores = scores.sort((a,b)=>b.p-a.p).slice(0,6);
   const max = Math.max(...scores.map(x=>x.p));
+
+  // probabilità cumulate dai risultati
+  const over15prob = scores.filter(x=>{
+    const [h,a]=x.s.split('-').map(Number); return h+a>=2;
+  }).reduce((s,x)=>s+x.p,0);
+  const over25prob = scores.filter(x=>{
+    const [h,a]=x.s.split('-').map(Number); return h+a>=3;
+  }).reduce((s,x)=>s+x.p,0);
+  const ggProb = scores.filter(x=>{
+    const [h,a]=x.s.split('-').map(Number); return h>=1&&a>=1;
+  }).reduce((s,x)=>s+x.p,0);
+
+  // consiglio diretto
+  let consiglio, consiglioColor;
+  if(m.p.over15 >= 78 && over15prob >= 55){
+    consiglio='✅ Over 1.5 confermato dai risultati simulati'; consiglioColor='#22d3ee';
+  } else if(m.p.over25 >= 62 && over25prob >= 38){
+    consiglio='✅ Over 2.5 supportato dalla simulazione'; consiglioColor='#22d3ee';
+  } else if(m.p.gg >= 62 && ggProb >= 40){
+    consiglio='✅ GG probabile — entrambe a segno nei risultati top'; consiglioColor='#a78bfa';
+  } else if(isClosed){
+    consiglio='⚠️ Gara chiusa — preferire Under 2.5 o 1X/X2'; consiglioColor='#facc15';
+  } else {
+    consiglio='ℹ️ Scenario equilibrato — valutare con quota reale'; consiglioColor='#94a3b8';
+  }
+
+  function barColor(p){
+    if(p>=18) return 'linear-gradient(90deg,#22d3ee,#06b6d4)';
+    if(p>=12) return 'linear-gradient(90deg,#a78bfa,#7c3aed)';
+    return 'linear-gradient(90deg,#f472b6,#db2777)';
+  }
+
+  const scenarioDominante = isOpen ? 'Gara aperta' : isClosed ? 'Gara chiusa' : 'Equilibrata';
+  const rangeGol = m.p.over25>=62 ? '2-4 gol' : m.p.over15>=72 ? '1-3 gol' : '1-2 gol';
+  const stabilitaLabel = kickoraScore(m)>=85?'Alto':kickoraScore(m)>=74?'Medio':'Basso';
 
   return `<div class="simulator">
     <div class="sim-head">
       <div>
         <div class="sim-title">Simulatore predittivo</div>
-        <div class="sim-sub">Distribuzione demo su ${total.toLocaleString('it-IT')} partite virtuali.</div>
+        <div class="sim-sub">Distribuzione su 1.000.000 partite virtuali · top 6 risultati</div>
       </div>
       <span class="chip cyan">SIMULAZIONE DEMO</span>
     </div>
     <div class="sim-grid">
       <div class="sim-score-list">
-        ${scores.map(x=>`<div class="sim-score-row">
-          <div class="sim-score-top"><span>Risultato ${x.s}</span><span>${x.p}%</span></div>
-          <div class="sim-score-bar"><div class="sim-score-fill" style="width:${Math.round((x.p/max)*100)}%"></div></div>
+        ${scores.map((x,i)=>`<div class="sim-score-row" style="${i===0?'border:1px solid rgba(34,211,238,.35)':''}">
+          <div class="sim-score-top">
+            <span style="display:flex;align-items:center;gap:6px">
+              ${i===0?'<span style="font-size:10px;background:rgba(34,211,238,.2);color:#22d3ee;border-radius:6px;padding:1px 6px">TOP</span>':''}
+              Risultato ${x.s}
+            </span>
+            <span style="color:${x.p>=18?'#22d3ee':x.p>=12?'#a78bfa':'#f472b6'};font-weight:900">${x.p}%</span>
+          </div>
+          <div class="sim-score-bar"><div class="sim-score-fill" style="width:${Math.round((x.p/max)*100)}%;background:${barColor(x.p)}"></div></div>
         </div>`).join('')}
       </div>
       <div class="sim-scenarios">
-        <div class="sim-scenario"><span>Scenario dominante</span><b>${m.p.over25 >= 62 ? 'Gara aperta' : m.p.u25 >= 55 ? 'Gara chiusa' : 'Equilibrata'}</b></div>
-        <div class="sim-scenario"><span>Range gol più probabile</span><b>${m.p.over25 >= 62 ? '2-4 gol' : '1-3 gol'}</b></div>
-        <div class="sim-scenario"><span>Indice stabilità</span><b>${kickoraScore(m) >= 85 ? 'Alto' : kickoraScore(m) >= 74 ? 'Medio' : 'Basso'}</b></div>
+        <div class="sim-scenario"><span>Scenario dominante</span><b>${scenarioDominante}</b></div>
+        <div class="sim-scenario"><span>Range gol più probabile</span><b>${rangeGol}</b></div>
+        <div class="sim-scenario"><span>Indice stabilità</span><b>${stabilitaLabel}</b></div>
+        <div class="sim-scenario" style="border-color:rgba(34,211,238,.25)">
+          <span>Over 1.5 simulato</span><b style="color:#22d3ee">${over15prob}%</b>
+        </div>
+        <div class="sim-scenario" style="border-color:rgba(167,139,250,.25)">
+          <span>Over 2.5 simulato</span><b style="color:#a78bfa">${over25prob}%</b>
+        </div>
+        <div class="sim-scenario" style="border-color:rgba(244,114,182,.25)">
+          <span>GG simulato</span><b style="color:#f472b6">${ggProb}%</b>
+        </div>
+        <div class="sim-scenario" style="border-color:rgba(34,211,238,.3);margin-top:4px">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em">Consiglio</span>
+          <b style="color:${consiglioColor};font-size:13px;line-height:1.4;margin-top:4px;display:block">${consiglio}</b>
+        </div>
       </div>
     </div>
   </div>`;
