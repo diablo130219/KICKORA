@@ -273,14 +273,9 @@ button,select,input{font-family:inherit}
 }
 
 
-.performance-box{margin-top:16px;border:1px solid rgba(34,211,238,.28);background:linear-gradient(135deg,rgba(34,211,238,.08),rgba(139,92,246,.08));border-radius:24px;padding:16px}
-.perf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.perf-card{background:rgba(2,6,23,.45);border:1px solid var(--border);border-radius:18px;padding:14px}
-.perf-card span{display:block;color:var(--muted);font-size:11px}
-.perf-card b{font-size:24px}
-.perf-table{margin-top:14px;display:grid;gap:8px}
+
 .perf-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;background:rgba(2,6,23,.4);padding:10px;border-radius:14px}
-@media(max-width:950px){.perf-grid{grid-template-columns:1fr 1fr}.perf-row{grid-template-columns:1fr}}
+@media(max-width:950px){.perf-row{grid-template-columns:1fr}}
 
 
 .api-real-panel{margin-top:16px;border:1px solid rgba(34,197,94,.26);background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(34,211,238,.07));border-radius:24px;padding:16px}
@@ -569,27 +564,6 @@ function buildApiRealPanel(){
     </div>
     <p class="note">Modalità pronta: quando imposti le variabili su Railway, il backend potrà leggere partite reali, salvare pick e aggiornare performance.</p>
   </div>`;
-}
-
-function buildPerformanceTracker(){
- const stats = [
-   ['Over 1.5','82%','+14.2%','FORTE'],
-   ['GG','69%','+7.8%','STABILE'],
-   ['1X/X2','77%','+10.1%','SOLIDO'],
-   ['Valore','61%','+18.4%','AGGRESSIVO']
- ];
- return `<div class="performance-box">
-   <h2>Performance Tracker</h2>
-   <div class="perf-grid">
-     <div class="perf-card"><span>Accuratezza Totale</span><b>78%</b></div>
-     <div class="perf-card"><span>ROI Simulato</span><b>+11.6%</b></div>
-     <div class="perf-card"><span>Pick Analizzate</span><b>124</b></div>
-     <div class="perf-card"><span>Mercato Top</span><b>Over 1.5</b></div>
-   </div>
-   <div class="perf-table">
-     ${stats.map(s=>`<div class="perf-row"><div>${s[0]}</div><div>${s[1]}</div><div>${s[2]}</div><div>${s[3]}</div></div>`).join('')}
-   </div>
- </div>`;
 }
 
 function buildRadarChart(m){
@@ -972,7 +946,7 @@ function buildManualXG(m){
 }
 
 function renderAnalysis(){
-  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildPerformanceTracker()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}</div></div>`}
+  if(!current){ renderEmptyState(); return; }const m=current;el('analysis').innerHTML=`<div class="analysis-head"><div class="title"><h1>${m.home} vs ${m.away}</h1><p>${m.comp} · ${m.time} · ${m.rank} · Quote demo: ${m.odds.h} / ${m.odds.d} / ${m.odds.a}</p></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div class="risk ${riskClass(m.risk)}">Rischio ${m.risk}</div><div><div class="score-ring" style="--score:${kickoraScore(m)}"><b>${kickoraScore(m)}</b></div><div class="score-label ${scoreTier(kickoraScore(m)).cls}">${scoreTier(kickoraScore(m)).txt}</div></div></div></div><div class="grid"><div class="stat"><div class="lab">SEGNO FISSO</div><div class="val">${m.segno}</div></div><div class="stat"><div class="lab">OVER</div><div class="val">${m.over}</div></div><div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div><div class="stat"><div class="lab">SCORE MODE</div><div class="val" style="font-size:18px">${m.score}</div></div></div><div class="bars">${bar('1 Casa',m.p.h)}${bar('X Pareggio',m.p.x)}${bar('2 Trasferta',m.p.a)}${bar('Over 1.5',m.p.over15)}${bar('Over 2.5',m.p.over25)}${bar('GG',m.p.gg)}</div>${buildApiRealPanel()}${buildRadarChart(m)}${buildMatchTimeline(m)}${buildSimulator(m)}${buildProPanel(m)}<div id="manualXGMount">${buildManualXG(m)}</div></div>`}
 
 
 function showKickoraError(msg, err=null){
