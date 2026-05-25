@@ -1289,7 +1289,8 @@ setInterval(updateLiveClock,60000);
 
 
 
-/* HARD LIVE OVERRIDE - forza dati API e campionati reali */
+
+/* HARD LIVE OVERRIDE - fetch fallback */
 function kickoraLocalDate(days=0){
   const d = new Date();
   d.setDate(d.getDate()+days);
@@ -1297,19 +1298,48 @@ function kickoraLocalDate(days=0){
 }
 
 function kickoraSetDateButtons(range){
-  document.querySelectorAll('.date-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.range===range));
+  document.querySelectorAll('.date-filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === range);
+  });
+}
+
+async function kickoraFetchMatches(range='today'){
+  const date = range === 'tomorrow' ? kickoraLocalDate(1) : null;
+  const url = date ? `/api/matches/today?date=${encodeURIComponent(date)}` : '/api/matches/today';
+
+  let res = await fetch(url, {cache:'no-store'});
+  let data = await res.json();
+
+  console.log('KICKORA FETCH PRIMARY', {range, url, ok:res.ok, count:data.count, rows:data.matches?.length, source:data.source});
+
+  if(!res.ok) throw new Error(data.error || 'Errore API');
+
+  // Fallback: se la chiamata con data torna vuota, prova senza data.
+  if((!Array.isArray(data.matches) || data.matches.length === 0) && date){
+    const fallbackUrl = '/api/matches/today';
+    res = await fetch(fallbackUrl, {cache:'no-store'});
+    data = await res.json();
+    console.log('KICKORA FETCH FALLBACK', {range, fallbackUrl, ok:res.ok, count:data.count, rows:data.matches?.length, source:data.source});
+    if(!res.ok) throw new Error(data.error || 'Errore API fallback');
+  }
+
+  return data;
 }
 
 function kickoraShowEmpty(msg){
   filtered = [];
   current = null;
+
   if(el('kpiMatches')) el('kpiMatches').textContent = 0;
   if(el('kpiSafe')) el('kpiSafe').textContent = 0;
   if(el('kpiValue')) el('kpiValue').textContent = 0;
+  if(el('kpiOver')) el('kpiOver').textContent = '0%';
   if(el('kpiAvg')) el('kpiAvg').textContent = '0%';
-  const box = `<div class="empty-state"><b>${msg}</b><span>API connessa, ma nessuna partita restituita per questa data.</span></div>`;
+
+  const box = `<div class="empty-state"><b>${msg}</b><span>API connessa, ma nessuna partita restituita. Premi aggiorna o riprova più tardi.</span></div>`;
   if(el('topPicks')) el('topPicks').innerHTML = box;
   if(el('matches')) el('matches').innerHTML = box;
+  if(el('matchList')) el('matchList').innerHTML = box;
   if(el('analysis')) el('analysis').innerHTML = box;
   if(el('aiAlerts')) el('aiAlerts').innerHTML = '';
   if(typeof updateFeedback === 'function') updateFeedback();
@@ -1318,6 +1348,7 @@ function kickoraShowEmpty(msg){
 function kickoraPopulateCompetitions(){
   const select = el('competitionFilter');
   if(!select) return;
+
   const previous = select.value || 'all';
   const comps = [...new Set((matchesData || []).map(m => m.comp).filter(Boolean))].sort();
 
@@ -1331,7 +1362,11 @@ function kickoraRenderAllLive(){
   kickoraPopulateCompetitions();
   filtered = sortMatches([...(matchesData || [])]);
   current = filtered[0] || matchesData[0] || null;
-  if(!current){ kickoraShowEmpty('Nessuna partita trovata'); return; }
+
+  if(!current){
+    kickoraShowEmpty('Nessuna partita trovata');
+    return;
+  }
 
   renderKPIs();
   renderTopPicks();
@@ -1345,23 +1380,24 @@ function kickoraRenderAllLive(){
 
 async function kickoraLoadLive(range='today'){
   kickoraSetDateButtons(range);
-  const date = range === 'tomorrow' ? kickoraLocalDate(1) : kickoraLocalDate(0);
 
   try{
-    const res = await fetch(`/api/matches/today?date=${date}`, {cache:'no-store'});
-    const data = await res.json();
-    console.log('KICKORA HARD LIVE', {date, count:data.count, rows:data.matches?.length, source:data.source});
+    if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = 'carico...';
 
-    if(!res.ok) throw new Error(data.error || 'Errore API');
-    if(!Array.isArray(data.matches) || data.matches.length === 0){
+    const data = await kickoraFetchMatches(range);
+    const rows = Array.isArray(data.matches) ? data.matches : [];
+
+    if(!rows.length){
       kickoraShowEmpty(range === 'tomorrow' ? 'Nessuna partita trovata per domani' : 'Nessuna partita trovata per oggi');
+      if(typeof checkLiveSystem === 'function') await checkLiveSystem();
       return;
     }
 
-    matchesData = data.matches.map(normalizeKickoraLiveMatch);
+    matchesData = rows.map(normalizeKickoraLiveMatch);
     kickoraRenderAllLive();
 
     if(typeof checkLiveSystem === 'function') await checkLiveSystem();
+
     const badge = document.querySelector('.badge');
     if(badge) badge.textContent = 'LIVE API';
   }catch(err){
