@@ -452,10 +452,15 @@ function kickoraScore(m){
   return Math.max(42, Math.min(98, Math.round(base + riskBonus + xgBonus)));
 }
 function scoreTier(score){
-  if(score >= 88) return {txt:'ELITE', cls:'elite'};
-  if(score >= 80) return {txt:'PREMIUM', cls:'premium'};
-  if(score >= 70) return {txt:'GOOD', cls:'goodscore'};
-  return {txt:'RISK', cls:'riskscore'};
+  if(score>=88) return {txt:'ELITE',   cls:'elite'};
+  if(score>=80) return {txt:'PREMIUM', cls:'premium'};
+  if(score>=70) return {txt:'BUONO',   cls:'goodscore'};
+  return {txt:'CAUTO', cls:'riskscore'};
+}
+function riskBadge(risk){
+  if(risk==='Basso') return `<span style="font-size:11px;font-weight:900;color:#22d3ee;background:rgba(34,211,238,.12);border-radius:8px;padding:2px 7px">🟢 Basso</span>`;
+  if(risk==='Medio') return `<span style="font-size:11px;font-weight:900;color:#facc15;background:rgba(250,204,21,.12);border-radius:8px;padding:2px 7px">🟡 Medio</span>`;
+  return `<span style="font-size:11px;font-weight:900;color:#f87171;background:rgba(239,68,68,.12);border-radius:8px;padding:2px 7px">🔴 Alto</span>`;
 }
 function riskWeight(r){
   return r === 'Basso' ? 1 : r === 'Medio' ? 2 : 3;
@@ -798,11 +803,18 @@ function renderTopPicks(){
       <small>${m.comp} · ${m.time}</small>
       <strong>${m.home} vs ${m.away}</strong>
       <div class="top-line">
-        <span class="chip good">${m.safe}</span>
-        <div><div class="score-ring" style="--score:${s}"><b>${s}</b></div><div class="score-label ${tier.cls}">${tier.txt}</div></div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span class="chip good">${m.safe}</span>
+          ${riskBadge(m.risk)}
+        </div>
+        <div style="text-align:center">
+          <div class="score-ring" style="--score:${s}"><b>${s}</b></div>
+          <div class="score-label ${tier.cls}">${tier.txt}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px">SCORE</div>
+        </div>
       </div>
     </div>`;
-  }).join('') + `</div>`;
+  }).join(') + `</div>`;
 }
 function updateFeedback(){
   const market = el('market').value;
