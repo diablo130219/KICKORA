@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
@@ -13,351 +12,385 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static("."));
 
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY;
-const API_FOOTBALL_BASE = process.env.API_FOOTBALL_BASE || "https://v3.football.api-sports.io";
+const ODDS_API_KEY = process.env.ODDS_API_KEY;
+const ODDS_API_BASE = process.env.ODDS_API_BASE || "https://api.the-odds-api.com/v4";
+const ODDS_REGIONS = process.env.ODDS_REGIONS || "eu";
+const ODDS_MARKETS = process.env.ODDS_MARKETS || "h2h,totals,btts";
+const ODDS_FORMAT = process.env.ODDS_FORMAT || "decimal";
+const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 720);
+const MAX_PARALLEL = Number(process.env.MAX_PARALLEL || 6);
 
-// Cache: default 6 ore. Su Railway puoi cambiarla con CACHE_TTL_MINUTES.
-const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 360);
+const ALL_SOCCER_SPORTS = [
+  "soccer_africa_cup_of_nations",
+  "soccer_argentina_primera_division",
+  "soccer_australia_aleague",
+  "soccer_austria_bundesliga",
+  "soccer_belgium_first_div",
+  "soccer_brazil_campeonato",
+  "soccer_brazil_serie_b",
+  "soccer_chile_campeonato",
+  "soccer_china_superleague",
+  "soccer_denmark_superliga",
+  "soccer_efl_champ",
+  "soccer_england_efl_cup",
+  "soccer_england_league1",
+  "soccer_england_league2",
+  "soccer_epl",
+  "soccer_fa_cup",
+  "soccer_fifa_world_cup",
+  "soccer_fifa_world_cup_qualifiers_europe",
+  "soccer_fifa_world_cup_qualifiers_south_america",
+  "soccer_fifa_world_cup_womens",
+  "soccer_fifa_world_cup_winner",
+  "soccer_fifa_club_world_cup",
+  "soccer_finland_veikkausliiga",
+  "soccer_france_coupe_de_france",
+  "soccer_france_ligue_one",
+  "soccer_france_ligue_two",
+  "soccer_germany_bundesliga",
+  "soccer_germany_bundesliga2",
+  "soccer_germany_bundesliga_women",
+  "soccer_germany_dfb_pokal",
+  "soccer_germany_liga3",
+  "soccer_greece_super_league",
+  "soccer_italy_coppa_italia",
+  "soccer_italy_serie_a",
+  "soccer_italy_serie_b",
+  "soccer_japan_j_league",
+  "soccer_korea_kleague1",
+  "soccer_league_of_ireland",
+  "soccer_mexico_ligamx",
+  "soccer_netherlands_eredivisie",
+  "soccer_norway_eliteserien",
+  "soccer_poland_ekstraklasa",
+  "soccer_portugal_primeira_liga",
+  "soccer_russia_premier_league",
+  "soccer_spain_copa_del_rey",
+  "soccer_spain_la_liga",
+  "soccer_spain_segunda_division",
+  "soccer_saudi_arabia_pro_league",
+  "soccer_spl",
+  "soccer_sweden_allsvenskan",
+  "soccer_sweden_superettan",
+  "soccer_switzerland_superleague",
+  "soccer_turkey_super_league",
+  "soccer_uefa_europa_conference_league",
+  "soccer_uefa_champs_league",
+  "soccer_uefa_champs_league_qualification",
+  "soccer_uefa_champs_league_women",
+  "soccer_uefa_europa_league",
+  "soccer_uefa_european_championship",
+  "soccer_uefa_euro_qualification",
+  "soccer_uefa_nations_league",
+  "soccer_concacaf_gold_cup",
+  "soccer_concacaf_leagues_cup",
+  "soccer_conmebol_copa_america",
+  "soccer_conmebol_copa_libertadores",
+  "soccer_conmebol_copa_sudamericana",
+  "soccer_usa_mls"
+];
+
 const cache = new Map();
 let apiCallsToday = 0;
-let apiCallsDay = new Date().toISOString().slice(0, 10);
+let apiCallsDay = new Date().toISOString().slice(0,10);
 
-const supabase =
-  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-    : null;
-
-function resetDailyCounterIfNeeded() {
-  const today = new Date().toISOString().slice(0, 10);
-  if (today !== apiCallsDay) {
+function resetDailyCounterIfNeeded(){
+  const today = new Date().toISOString().slice(0,10);
+  if(today !== apiCallsDay){
     apiCallsDay = today;
     apiCallsToday = 0;
   }
 }
 
-function getCacheKey(date) {
-  return `fixtures:${date}`;
+function localDateRome(days=0){
+  const now = new Date();
+  const rome = new Date(now.toLocaleString("en-US", { timeZone:"Europe/Rome" }));
+  rome.setDate(rome.getDate()+days);
+  const y = rome.getFullYear();
+  const m = String(rome.getMonth()+1).padStart(2,"0");
+  const d = String(rome.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
 }
 
-function isCacheValid(entry) {
-  if (!entry) return false;
-  const ageMs = Date.now() - entry.createdAt;
-  return ageMs < CACHE_TTL_MINUTES * 60 * 1000;
+function eventRomeDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone:"Europe/Rome",
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit"
+  }).formatToParts(d);
+  const get = t => parts.find(p=>p.type===t)?.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-async function apiFootball(path) {
-  if (!API_FOOTBALL_KEY) {
-    throw new Error("API_FOOTBALL_KEY non configurata su Railway Variables");
-  }
-
-  resetDailyCounterIfNeeded();
-
-  const response = await fetch(`${API_FOOTBALL_BASE}${path}`, {
-    headers: {
-      "x-apisports-key": API_FOOTBALL_KEY
-    }
+function eventRomeTime(iso){
+  if(!iso) return "-";
+  return new Date(iso).toLocaleTimeString("it-IT", {
+    timeZone:"Europe/Rome",
+    hour:"2-digit",
+    minute:"2-digit"
   });
+}
 
-  apiCallsToday += 1;
+function cacheValid(entry){
+  return entry && (Date.now() - entry.createdAt) < CACHE_TTL_MINUTES * 60 * 1000;
+}
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API-Football error ${response.status}: ${text}`);
+function bestPrice(bookmakers = [], marketKey, outcomeName){
+  let best = null;
+  for(const bookmaker of bookmakers || []){
+    for(const market of bookmaker.markets || []){
+      if(market.key !== marketKey) continue;
+      for(const outcome of market.outcomes || []){
+        const match = String(outcome.name || "").toLowerCase() === String(outcomeName || "").toLowerCase();
+        if(match){
+          if(!best || Number(outcome.price) > Number(best.price)){
+            best = { price:Number(outcome.price), bookmaker:bookmaker.title, point:outcome.point ?? null };
+          }
+        }
+      }
+    }
   }
-
-  return response.json();
+  return best;
 }
 
-function normalizeFixture(row) {
-  const fixture = row.fixture || {};
-  const league = row.league || {};
-  const teams = row.teams || {};
-  const goals = row.goals || {};
-
-  return {
-    external_id: String(fixture.id),
-    comp: league.name || "Competizione",
-    country: league.country || "",
-    league_id: league.id || null,
-    season: league.season || null,
-    time: fixture.date ? new Date(fixture.date).toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }) : "-",
-    date: fixture.date || null,
-    home: teams.home?.name || "Casa",
-    away: teams.away?.name || "Trasferta",
-    home_id: teams.home?.id || null,
-    away_id: teams.away?.id || null,
-    status: fixture.status?.short || "NS",
-    goals_home: goals.home,
-    goals_away: goals.away,
-    raw: row
-  };
+function bestTotal(bookmakers = [], side="Over", point=2.5){
+  let best = null;
+  for(const bookmaker of bookmakers || []){
+    for(const market of bookmaker.markets || []){
+      if(market.key !== "totals") continue;
+      for(const outcome of market.outcomes || []){
+        if(outcome.name === side && Number(outcome.point) === Number(point)){
+          if(!best || Number(outcome.price) > Number(best.price)){
+            best = { price:Number(outcome.price), bookmaker:bookmaker.title, point:outcome.point };
+          }
+        }
+      }
+    }
+  }
+  return best;
 }
 
-
-function estimateKickoraXG({ homeProb, awayProb, over15, over25, gg }) {
-  // Pseudo-xG proprietario Kickora.
-  // Non è xG ufficiale: è una stima derivata da probabilità goal, trend over e forza relativa.
-  const goalPressure = (over15 * 0.010) + (over25 * 0.012) + (gg * 0.006);
-  const homeEdge = Math.max(-0.25, Math.min(0.35, (homeProb - awayProb) / 120));
-  const awayEdge = Math.max(-0.25, Math.min(0.35, (awayProb - homeProb) / 140));
-
-  const xgHome = Math.max(0.45, Math.min(2.85, 0.55 + goalPressure + homeEdge));
-  const xgAway = Math.max(0.35, Math.min(2.45, 0.45 + goalPressure * 0.82 + awayEdge));
-
-  return {
-    xgH: Number(xgHome.toFixed(2)),
-    xgA: Number(xgAway.toFixed(2))
-  };
+function implied(odd){
+  const o = Number(odd || 0);
+  if(!o || o <= 1) return 0;
+  return Math.round((1/o)*100);
 }
 
+function scoreFromOdds({ homeProb, drawProb, awayProb, over15, over25, gg }){
+  const base = Math.max(over15, gg, homeProb, awayProb);
+  const stability = Math.max(0, 18 - Math.abs(homeProb-awayProb));
+  return Math.max(40, Math.min(92, Math.round(base*0.72 + stability + over25*0.12)));
+}
 
-function bridgeKickoraModel(match) {
-  const seed = (match.home.length * 7 + match.away.length * 5 + Number(match.external_id || 0)) % 28;
-  const over15 = Math.min(92, 64 + seed);
-  const over25 = Math.max(38, over15 - 22);
-  const gg = Math.min(76, Math.max(42, over25 + 8));
-  const homeProb = 40 + (match.home.length % 18);
-  const awayProb = 24 + (match.away.length % 15);
-  const drawProb = Math.max(18, 100 - homeProb - awayProb);
-  const estimatedXG = estimateKickoraXG({ homeProb, awayProb, over15, over25, gg });
+function chooseSign({ homeProb, drawProb, awayProb, over25, gg }){
+  const spread = Math.abs(homeProb-awayProb);
+  const open = over25 >= 62 || gg >= 62;
+  if(homeProb >= 54 && homeProb >= awayProb + 14 && homeProb >= drawProb + 10) return "1";
+  if(awayProb >= 42 && awayProb >= homeProb + 10 && awayProb >= drawProb + 8) return "2";
+  if(drawProb >= 34 && spread <= 8 && !open) return "X";
+  if(homeProb >= awayProb + 6 && drawProb >= 22) return "1X";
+  if(awayProb >= homeProb + 4 && drawProb >= 22) return "X2";
+  if(open && drawProb <= 28) return "12";
+  return homeProb >= awayProb ? "1X" : "X2";
+}
+
+function normalizeOddsEvent(ev){
+  const h2hHome = bestPrice(ev.bookmakers, "h2h", ev.home_team);
+  const h2hAway = bestPrice(ev.bookmakers, "h2h", ev.away_team);
+  const h2hDraw = bestPrice(ev.bookmakers, "h2h", "Draw");
+
+  const over25Odd = bestTotal(ev.bookmakers, "Over", 2.5);
+  const under25Odd = bestTotal(ev.bookmakers, "Under", 2.5);
+  const over15Odd = bestTotal(ev.bookmakers, "Over", 1.5);
+  const under35Odd = bestTotal(ev.bookmakers, "Under", 3.5);
+  const yesBtts = bestPrice(ev.bookmakers, "btts", "Yes");
+  const noBtts = bestPrice(ev.bookmakers, "btts", "No");
+
+  const hRaw = implied(h2hHome?.price);
+  const xRaw = implied(h2hDraw?.price);
+  const aRaw = implied(h2hAway?.price);
+  const sum = hRaw + xRaw + aRaw;
+  const homeProb = sum ? Math.round((hRaw/sum)*100) : 40;
+  const drawProb = sum ? Math.round((xRaw/sum)*100) : 28;
+  const awayProb = sum ? Math.max(0, 100-homeProb-drawProb) : 32;
+
+  const over25Imp = implied(over25Odd?.price);
+  const over15Imp = over15Odd ? implied(over15Odd.price) : Math.min(92, Math.max(54, over25Imp + 18));
+  const under25Imp = implied(under25Odd?.price);
+  const under35Imp = implied(under35Odd?.price) || 72;
+  const ggImp = yesBtts ? implied(yesBtts.price) : Math.min(78, Math.max(40, over25Imp + 8));
+  const ngImp = noBtts ? implied(noBtts.price) : Math.max(22, 100-ggImp);
+
+  const kscore = scoreFromOdds({ homeProb, drawProb, awayProb, over15:over15Imp, over25:over25Imp, gg:ggImp });
+  const risk = kscore >= 74 ? "Basso" : kscore >= 63 ? "Medio" : "Alto";
+  const sign = chooseSign({ homeProb, drawProb, awayProb, over25:over25Imp, gg:ggImp });
+
+  const safe = over15Imp >= 75 ? "Over 1.5" : sign;
+  const over = over25Imp >= 58 ? "Over 2.5" : over15Imp >= 66 ? "Over 1.5" : "Over 0.5/1.5";
+  const ggLabel = ggImp >= 62 ? "GG" : ggImp >= 52 ? "GG leggero" : "No Gol leggero";
 
   return {
-    id: match.external_id,
-    comp: match.comp,
-    time: match.time,
-    home: match.home,
-    away: match.away,
+    id: ev.id,
+    comp: ev.sport_title || ev.sport_key || "Soccer",
+    sportKey: ev.sport_key,
+    date: ev.commence_time,
+    time: eventRomeTime(ev.commence_time),
+    home: ev.home_team || "Casa",
+    away: ev.away_team || "Trasferta",
     rank: "-",
     formH: "-",
     formA: "-",
-    xgH: estimatedXG.xgH,
-    xgA: estimatedXG.xgA,
-    odds: { h: 0, d: 0, a: 0 },
-    p: {
-      h: homeProb,
-      x: drawProb,
-      a: awayProb,
-      dc1x: Math.min(92, homeProb + drawProb),
-      dcx2: Math.min(88, awayProb + drawProb),
-      over05: 92,
-      over15,
-      over25,
-      over35: Math.max(18, over25 - 21),
-      u25: Math.max(25, 100 - over25),
-      u35: 72,
-      gg,
-      ng: 100 - gg,
-      pt05: 65,
-      pt15: 25,
-      st05: 74,
-      st15: 39,
-      btts1: 14,
-      btts2: 22,
-      corners75: 68,
-      corners85: 56,
-      u105: 61,
-      u115: 73,
-      u125: 84,
-      cards25: 71,
-      cards35: 54,
-      u55: 66,
-      u65: 78,
-      u75: 88
+    xgH: 0,
+    xgA: 0,
+    xgSource: "Manuale Kickora",
+    odds: {
+      h: h2hHome?.price || 0,
+      d: h2hDraw?.price || 0,
+      a: h2hAway?.price || 0
     },
-    safe: over15 >= 78 ? "Over 1.5" : "1X prudente",
-    segno: "1X",
-    over: over15 >= 78 ? "Over 1.5" : "Over 0.5/1.5",
-    gg: gg >= 60 ? "GG" : "No Gol leggero",
-    value: "Da calcolare con quota reale",
-    risk: over15 >= 80 ? "Basso" : over15 >= 68 ? "Medio" : "Alto",
-    score: "-",
-    xgSource: "Kickora stimato"
+    p: {
+      h: homeProb, x: drawProb, a: awayProb,
+      dc1x: Math.min(96, homeProb+drawProb),
+      dcx2: Math.min(96, awayProb+drawProb),
+      over05: Math.min(96, over15Imp + 8),
+      over15: over15Imp || 0,
+      over25: over25Imp || 0,
+      over35: Math.max(18, (over25Imp || 50)-22),
+      u25: under25Imp || Math.max(20, 100-(over25Imp || 50)),
+      u35: under35Imp,
+      gg: ggImp,
+      ng: ngImp,
+      pt05: null, pt15:null, st05:null, st15:null, btts1:null, btts2:null,
+      corners75:null, corners85:null, u105:null, u115:null, u125:null,
+      cards25:null, cards35:null, u55:null, u65:null, u75:null
+    },
+    safe,
+    segno: sign,
+    over,
+    gg: ggLabel,
+    value: "Da valutare con quota reale",
+    risk,
+    score: kscore,
+    isLiveApi: true
   };
 }
 
-async function saveMatchesToSupabase(normalized) {
-  if (!supabase || !normalized.length) return;
+async function oddsRequestSport(sport){
+  resetDailyCounterIfNeeded();
+  const params = new URLSearchParams({
+    apiKey: ODDS_API_KEY,
+    regions: ODDS_REGIONS,
+    markets: ODDS_MARKETS,
+    oddsFormat: ODDS_FORMAT,
+    dateFormat: "iso"
+  });
+  const url = `${ODDS_API_BASE}/sports/${sport}/odds?${params.toString()}`;
+  const res = await fetch(url);
+  apiCallsToday += 1;
 
-  const rows = normalized.map((m) => ({
-    external_id: m.external_id,
-    comp: m.comp,
-    country: m.country,
-    match_date: m.date,
-    home_team: m.home,
-    away_team: m.away,
-    status: m.status,
-    goals_home: m.goals_home,
-    goals_away: m.goals_away,
-    raw: m.raw
-  }));
-
-  await supabase.from("matches").upsert(rows, { onConflict: "external_id" });
+  if(res.status === 404) return [];
+  if(!res.ok){
+    const text = await res.text();
+    console.warn("The Odds API error", sport, res.status, text.slice(0,200));
+    return [];
+  }
+  return res.json();
 }
 
-app.get("/api/health", (req, res) => {
+async function fetchAllSoccer(){
+  if(!ODDS_API_KEY) throw new Error("ODDS_API_KEY non configurata su Railway Variables");
+
+  const results = [];
+  for(let i=0; i<ALL_SOCCER_SPORTS.length; i += MAX_PARALLEL){
+    const chunk = ALL_SOCCER_SPORTS.slice(i, i+MAX_PARALLEL);
+    const settled = await Promise.allSettled(chunk.map(s => oddsRequestSport(s)));
+    settled.forEach((r, idx) => {
+      if(r.status === "fulfilled" && Array.isArray(r.value)){
+        results.push(...r.value.map(ev => ({...ev, sport_key: chunk[idx]})));
+      }
+    });
+  }
+  return results;
+}
+
+app.get("/api/health", (req,res)=>{
   resetDailyCounterIfNeeded();
   res.json({
-    ok: true,
-    provider: "API-Football",
-    apiFootballConfigured: Boolean(API_FOOTBALL_KEY),
-    supabaseConfigured: Boolean(supabase),
-    cacheTtlMinutes: CACHE_TTL_MINUTES,
-    apiCallsToday
-  });
-});
-
-app.get("/api/cache/status", (req, res) => {
-  resetDailyCounterIfNeeded();
-  const items = Array.from(cache.entries()).map(([key, entry]) => ({
-    key,
-    count: entry?.matches?.length || 0,
-    createdAt: new Date(entry.createdAt).toISOString(),
-    valid: isCacheValid(entry),
-    expiresAt: new Date(entry.createdAt + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
-  }));
-
-  res.json({
-    ok: true,
-    cacheTtlMinutes: CACHE_TTL_MINUTES,
+    ok:true,
+    provider:"The Odds API",
+    oddsApiConfigured:Boolean(ODDS_API_KEY),
+    apiFootballConfigured:false,
+    supabaseConfigured:false,
+    cacheTtlMinutes:CACHE_TTL_MINUTES,
     apiCallsToday,
-    items
+    sportsConfigured:ALL_SOCCER_SPORTS.length
   });
 });
 
-app.get("/api/cache/clear", (req, res) => {
-  cache.clear();
-  res.json({ ok: true, message: "Cache svuotata" });
+app.get("/api/cache/status", (req,res)=>{
+  resetDailyCounterIfNeeded();
+  res.json({
+    ok:true,
+    cacheTtlMinutes:CACHE_TTL_MINUTES,
+    apiCallsToday,
+    items:Array.from(cache.entries()).map(([key, entry])=>({
+      key,
+      count:entry.matches?.length || 0,
+      valid:cacheValid(entry),
+      createdAt:new Date(entry.createdAt).toISOString(),
+      expiresAt:new Date(entry.createdAt + CACHE_TTL_MINUTES*60*1000).toISOString()
+    }))
+  });
 });
 
-app.get("/api/matches/today", async (req, res) => {
-  try {
-    const date = req.query.date || new Date().toISOString().slice(0, 10);
+app.get("/api/cache/clear", (req,res)=>{
+  cache.clear();
+  res.json({ok:true, message:"Cache svuotata"});
+});
+
+app.get("/api/matches/today", async (req,res)=>{
+  try{
+    const date = req.query.date || localDateRome(0);
     const force = req.query.force === "1" || req.query.refresh === "1";
-    const key = getCacheKey(date);
+    const key = `odds:${date}`;
     const cached = cache.get(key);
 
-    if (!force && isCacheValid(cached)) {
+    if(!force && cacheValid(cached)){
       return res.json({
         date,
-        count: cached.matches.length,
-        matches: cached.matches,
-        source: "cache",
+        count:cached.matches.length,
+        matches:cached.matches,
+        source:"cache",
         apiCallsToday,
-        cache: {
-          hit: true,
-          createdAt: new Date(cached.createdAt).toISOString(),
-          expiresAt: new Date(cached.createdAt + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
-        }
+        cache:{hit:true, createdAt:new Date(cached.createdAt).toISOString()}
       });
     }
 
-    const data = await apiFootball(`/fixtures?date=${date}`);
-    const normalized = (data.response || []).map(normalizeFixture);
-    const matches = normalized.map(bridgeKickoraModel);
+    const all = await fetchAllSoccer();
+    const filteredEvents = all.filter(ev => eventRomeDate(ev.commence_time) === date);
+    const matches = filteredEvents.map(normalizeOddsEvent).filter(m => m.home && m.away);
 
-    cache.set(key, {
-      createdAt: Date.now(),
-      matches,
-      normalized
-    });
-
-    // Non bloccare la risposta se Supabase ha problemi.
-    saveMatchesToSupabase(normalized).catch((err) => {
-      console.warn("Supabase save skipped:", err.message);
-    });
+    cache.set(key, {createdAt:Date.now(), matches});
 
     res.json({
       date,
-      count: matches.length,
+      count:matches.length,
       matches,
-      source: "api-football",
+      source:"the-odds-api",
       apiCallsToday,
-      cache: {
-        hit: false,
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + CACHE_TTL_MINUTES * 60 * 1000).toISOString()
-      }
+      rawEvents:all.length,
+      cache:{hit:false, createdAt:new Date().toISOString()}
     });
-  } catch (error) {
-    const date = req.query.date || new Date().toISOString().slice(0, 10);
-    const cached = cache.get(getCacheKey(date));
-
-    if (cached) {
-      return res.json({
-        date,
-        count: cached.matches.length,
-        matches: cached.matches,
-        source: "stale-cache",
-        warning: error.message,
-        apiCallsToday
-      });
-    }
-
-    res.status(500).json({ error: error.message, apiCallsToday });
+  }catch(error){
+    res.status(500).json({error:error.message, apiCallsToday});
   }
 });
 
-app.post("/api/picks", async (req, res) => {
-  try {
-    if (!supabase) throw new Error("Supabase non configurato");
-
-    const payload = req.body || {};
-    const row = {
-      match_external_id: String(payload.match_external_id || payload.id || ""),
-      match_label: payload.match_label,
-      market: payload.market,
-      selection: payload.selection,
-      probability: payload.probability,
-      odds: payload.odds,
-      stake: payload.stake || 1,
-      status: "pending",
-      raw: payload
-    };
-
-    const { data, error } = await supabase.from("picks").insert(row).select().single();
-    if (error) throw error;
-
-    res.json({ ok: true, pick: data });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get("/api/performance", async (req, res) => {
-  try {
-    if (!supabase) throw new Error("Supabase non configurato");
-
-    const { data, error } = await supabase.from("picks").select("*");
-    if (error) throw error;
-
-    const settled = data.filter((p) => p.status === "won" || p.status === "lost");
-    const won = settled.filter((p) => p.status === "won").length;
-    const accuracy = settled.length ? Math.round((won / settled.length) * 100) : 0;
-
-    const profit = settled.reduce((sum, p) => {
-      const stake = Number(p.stake || 1);
-      const odds = Number(p.odds || 0);
-      return sum + (p.status === "won" ? stake * Math.max(0, odds - 1) : -stake);
-    }, 0);
-
-    const totalStake = settled.reduce((sum, p) => sum + Number(p.stake || 1), 0);
-    const roi = totalStake ? Number(((profit / totalStake) * 100).toFixed(1)) : 0;
-
-    res.json({
-      total: data.length,
-      settled: settled.length,
-      won,
-      lost: settled.length - won,
-      accuracy,
-      roi,
-      profit: Number(profit.toFixed(2))
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.listen(PORT, HOST, () => {
-  console.log(`Kickora API-Football con cache attivo su http://${HOST}:${PORT}`);
-  console.log(`Cache TTL: ${CACHE_TTL_MINUTES} minuti`);
+app.listen(PORT, HOST, ()=>{
+  console.log(`Kickora The Odds API all soccer attivo su http://${HOST}:${PORT}`);
+  console.log(`Sports configured: ${ALL_SOCCER_SPORTS.length}`);
+  console.log(`Cache TTL: ${CACHE_TTL_MINUTES} min`);
 });
