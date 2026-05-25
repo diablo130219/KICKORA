@@ -762,37 +762,65 @@ function buildSimulator(m){
 }
 
 function buildAiAlerts(){
-  const alerts = sortMatches(filtered).map(m=>{
-    const score = kickoraScore(m);
-    if(m.p.over25 >= 62 && m.odds && m.odds.h >= 1.6){
-      return {m, sev:'hot', tag:'ANOMALIA OVER', text:`Over 2.5 al ${m.p.over25}% con profilo offensivo alto. Possibile mercato sottostimato se la quota reale resta alta.`};
-    }
-    if(score >= 86 && m.risk === 'Basso'){
-      return {m, sev:'safe', tag:'SAFE BOOST', text:`Kickora Score ${score} con rischio basso. Match molto adatto a giocata conservativa o base multipla.`};
-    }
-    if(m.p.gg >= 64 && m.p.over15 >= 80){
-      return {m, sev:'hot', tag:'GG + GOAL TREND', text:`BTTS forte e Over 1.5 sopra l'80%. Scenario gara aperta con almeno un gol per parte plausibile.`};
-    }
-    if(m.p.cards35 >= 65){
-      return {m, sev:'watch', tag:'TENSIONE CARTELLINI', text:` Over 3.5 sopra soglia. Match potenzialmente fisico o tatticamente bloccato.`};
-    }
-    return null;
-  }).filter(Boolean).slice(0,4);
+  const alerts = [];
 
-  if(!alerts.length){
+  sortMatches(filtered).forEach(m=>{
+    const score = kickoraScore(m);
+
+    // Over 1.5 solido
+    if(m.p.over15 >= 82 && m.p.gg >= 60){
+      alerts.push({m, sev:'safe', tag:'✅ OVER 1.5 SOLIDO',
+        text:`Over 1.5 all'${m.p.over15}% con GG al ${m.p.gg}%. Alta probabilità di almeno 2 gol — mercato principale consigliato.`});
+    }
+    // Over 2.5 con valore
+    else if(m.p.over25 >= 65){
+      alerts.push({m, sev:'hot', tag:'🔥 OVER 2.5 FORTE',
+        text:`Over 2.5 al ${m.p.over25}% — gara offensiva con profilo goalscoring elevato. Verifica quota ≥1.60 per valore reale.`});
+    }
+    // GG confermato
+    else if(m.p.gg >= 68 && m.p.over15 >= 78){
+      alerts.push({m, sev:'hot', tag:'⚽ GG CONFERMATO',
+        text:`GG al ${m.p.gg}% — entrambe le squadre a segno molto probabile. Considera GG o Over 1.5 come pick principale.`});
+    }
+    // DC 1X sicura
+    else if(m.p.dc1x >= 80 && m.p.h >= 50){
+      alerts.push({m, sev:'safe', tag:'🛡 DC 1X SICURA',
+        text:`Doppia Chance 1X all'${m.p.dc1x}% — casa nettamente favorita. Ottima base per combinata o singola prudente.`});
+    }
+    // Segno 1 forte
+    else if(m.p.h >= 60 && score >= 68){
+      alerts.push({m, sev:'safe', tag:'1️⃣ SEGNO 1 FORTE',
+        text:`Probabilità casa al ${m.p.h}% con Kickora Score ${score}. Il segno 1 è supportato dai dati — valuta quota minima 1.40.`});
+    }
+    // Multigol interessante
+    else if(m.p.over15 >= 75 && m.p.over25 < 50){
+      alerts.push({m, sev:'watch', tag:'🎯 MULTIGOL 1-3',
+        text:`Over 1.5 all'${m.p.over15}% ma Over 2.5 al ${m.p.over25}%. Scenario Multigol 1-3 o 2-3 interessante.`});
+    }
+    // Under sottovalutato
+    else if(m.p.u25 >= 58 && m.p.ng >= 45){
+      alerts.push({m, sev:'watch', tag:'⬇️ UNDER SOTTOVALUTATO',
+        text:`Under 2.5 al ${m.p.u25}% — gara potenzialmente chiusa. Verifica se la quota Under è ancora alta.`});
+    }
+  });
+
+  const top = alerts.slice(0, 6);
+
+  if(!top.length){
     el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip">Nessuna anomalia forte</span></h2><p class="note">Il motore non rileva edge evidenti con i filtri attuali.</p>`;
     return;
   }
 
-  el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip hot">${alerts.length} segnali</span></h2>
+  el('aiAlerts').innerHTML = `<h2>Alert Algoritmici <span class="chip hot">${top.length} segnali</span></h2>
     <div class="ai-alert-grid">
-      ${alerts.map(a=>`<div class="ai-alert" data-match-id="${String(a.m.id)}">
+      ${top.map(a=>`<div class="ai-alert" data-match-id="${String(a.m.id)}">
         <small>${a.m.comp} · ${a.m.time}</small>
         <strong>${a.m.home} vs ${a.m.away}</strong>
         <p>${a.text}</p>
         <span class="ai-sev ${a.sev}">${a.tag}</span>
       </div>`).join('')}
     </div>`;
+
 }
 
 function renderTopPicks(){
