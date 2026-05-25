@@ -810,7 +810,7 @@ function updateFeedback(){
 
 function renderKPIs(){el('kpiMatches').textContent=filtered.length; el('kpiSafe').textContent=filtered.filter(m=>m.risk==='Basso').length; el('kpiValue').textContent=filtered.filter(m=>m.value).length; el('kpiAvg').textContent=Math.round(filtered.reduce((s,m)=>s+m.p.over15,0)/(filtered.length||1))+'%'}
 let matchPage = 0;
-const MATCHES_PER_PAGE = 10;
+const MATCHES_PER_PAGE = 5;
 
 function renderMatches(){
   const totalPages = Math.max(1, Math.ceil(filtered.length / MATCHES_PER_PAGE));
