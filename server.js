@@ -146,7 +146,7 @@ async function fetchBSDMatches(date) {
   let offset = 0;
   const limit = 200;
   while (true) {
-    const data = await bsdFetch("/events/?date_from=" + date + "&date_to=" + date + "&status=notstarted&limit=" + limit + "&offset=" + offset);
+    const data = await bsdFetch("/events/?date_from=" + date + "&date_to=" + date + "&limit=" + limit + "&offset=" + offset);
     const results = data.results || [];
     allEvents = allEvents.concat(results);
     if (!data.next || results.length < limit) break;
