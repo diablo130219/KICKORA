@@ -371,23 +371,6 @@ app.get("/api/cache/clear", (req, res) => {
   res.json({ ok: true, message: "Cache svuotata" });
 });
 
-// ─── ENDPOINT: H2H ───────────────────────────────────────────────────────────
-app.get("/api/h2h", async (req, res) => {
-  const { home, away } = req.query;
-  if (!home || !away) return res.status(400).json({ ok: false, error: "Parametri home e away richiesti" });
-
-  if (USE_MOCK) {
-    return res.json({ ok: false, error: "H2H non disponibile in modalità mock" });
-  }
-
-  try {
-    const data = await safeApiFootballCall(`/fixtures/headtohead?h2h=${home}-${away}&last=5`);
-    res.json({ ok: true, fixtures: data.response || [] });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
 // ─── ENDPOINT: MATCHES ────────────────────────────────────────────────────────
 app.get("/api/matches/today", async (req, res) => {
   try {
