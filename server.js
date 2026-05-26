@@ -408,7 +408,8 @@ app.get("/api/debug/pred", async (req,res) => {
   }
 });
 
-// ─── ENDPOINT: HEALTH ─────────────────────────────────────────────────────────
+// ─── ENDPOINTS ────────────────────────────────────────────────────────────────
+app.get("/api/health", (req,res) => {
   res.json({
     ok: true,
     provider:            USE_MOCK ? "MOCK" : "BSD",
