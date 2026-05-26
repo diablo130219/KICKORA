@@ -361,7 +361,27 @@ app.get("/api/debug/pred", async function(req, res) {
   } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
 });
 
-app.get("/api/cache/status", function(req, res) {
+app.get("/api/debug/markets", async function(req, res) {
+  if (USE_MOCK) return res.json({ ok:false, error:"Mock attivo" });
+  try {
+    const date = localDateRome(0);
+    const data = await bsdFetch("/predictions/?limit=1");
+    const pred = (data.results && data.results[0]) || null;
+    if (!pred) return res.json({ ok:false, error:"Nessuna prediction" });
+    res.json({
+      ok: true,
+      predId: pred.id,
+      eventDate: pred.event && pred.event.event_date,
+      home: pred.event && pred.event.home_team,
+      away: pred.event && pred.event.away_team,
+      marketsKeys: pred.markets ? Object.keys(pred.markets) : [],
+      match_result: pred.markets && pred.markets.match_result,
+      over_under: pred.markets && pred.markets.over_under,
+      btts: pred.markets && pred.markets.btts,
+      expected_goals: pred.markets && pred.markets.expected_goals
+    });
+  } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
+});
   res.json({ ok:true, cacheTtlMinutes:CACHE_TTL_MINUTES, items:Array.from(cache.entries()).map(function(entry) { return { key:entry[0], count:(entry[1].matches&&entry[1].matches.length)||0, valid:isCacheValid(entry[1]) }; }) });
 });
 
