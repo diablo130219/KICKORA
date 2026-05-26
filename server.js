@@ -165,7 +165,7 @@ function normalizeBSDEvent(ev, pred) {
 async function fetchBSDMatches(date) {
   if (!BSD_API_KEY) throw new Error("BSD_API_KEY non configurata");
 
-  // Step 1: carica tutti gli eventi del giorno
+  // Step 1: tutti gli eventi del giorno (funziona - dava 147 partite)
   let allEvents = [];
   let offset = 0;
   const limit = 200;
@@ -179,49 +179,31 @@ async function fetchBSDMatches(date) {
   }
   console.log("[BSD] " + allEvents.length + " eventi per " + date);
 
-  // Step 2: carica TUTTE le predictions del giorno in una sola chiamata paginata
-  // e crea una mappa home_team+away_team -> prediction
-  let allPreds = [];
-  offset = 0;
-  while (true) {
-    const data = await bsdFetch("/predictions/?limit=" + limit + "&offset=" + offset);
-    const results = data.results || [];
-    // Filtra solo quelle di oggi
-    const todayPreds = results.filter(function(p) {
-      return p.event && p.event.event_date && p.event.event_date.startsWith(date);
-    });
-    allPreds = allPreds.concat(todayPreds);
-    // Se non ci sono più predictions di oggi fermati
-    const hasMore = data.next && results.length === limit;
-    const allToday = results.every(function(p) {
-      return p.event && p.event.event_date && p.event.event_date.startsWith(date);
-    });
-    if (!hasMore) break;
-    offset += limit;
-    await sleep(200);
-  }
-  console.log("[BSD] " + allPreds.length + " predictions per " + date);
+  // Step 2: predictions filtrate per data (una sola chiamata)
+  const predData = await bsdFetch("/predictions/?event__event_date__date=" + date + "&limit=200");
+  const predResults = predData.results || [];
+  console.log("[BSD] " + predResults.length + " predictions per " + date);
 
-  // Step 3: crea mappa home+away -> prediction
+  // Step 3: mappa per nome squadra
   var predMap = {};
-  allPreds.forEach(function(pred) {
+  predResults.forEach(function(pred) {
     if (pred.event) {
       const key = (pred.event.home_team + "|" + pred.event.away_team).toLowerCase();
       predMap[key] = pred;
     }
   });
 
-  // Step 4: abbina eventi a predictions tramite nome squadra
+  // Step 4: abbina e normalizza
   const matches = allEvents.map(function(ev) {
-    const key = (ev.home_team + "|" + ev.away_team).toLowerCase();
+    const key = ((ev.home_team || "") + "|" + (ev.away_team || "")).toLowerCase();
     const pred = predMap[key] || null;
-    if (pred && pred.event) {
-      ev.league_name = pred.event.league_name || ev.league_name;
+    if (pred && pred.event && pred.event.league_name) {
+      ev.league_name = pred.event.league_name;
     }
     return normalizeBSDEvent(ev, pred);
   }).filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
 
-  console.log("[BSD] " + matches.length + " partite con " + Object.keys(predMap).length + " predictions abbinate");
+  console.log("[BSD] " + matches.length + " partite, " + Object.keys(predMap).length + " predictions abbinate");
   return matches;
 }
 
