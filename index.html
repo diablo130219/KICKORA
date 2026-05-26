@@ -1138,13 +1138,84 @@ function buildRanking(){
 }
 
 function buildManualXG(m){
+  const hasRealXG = m.xgH > 0 || m.xgA > 0;
   const d = defaultManualStats(m);
   setTimeout(updateManualXG, 0);
 
-  const inputField = (id, label, val) => `<div class="xg-field">
-    <label>${label} <span style="font-size:9px;color:#22d3ee;background:rgba(34,211,238,.15);border-radius:4px;padding:1px 4px">AUTO</span></label>
-    <input id="${id}" type="number" step="1" min="0" value="${val}" oninput="updateManualXG()" style="border-color:rgba(34,211,238,.4)">
+  const inputField = (id, label, val, isAuto) => `<div class="xg-field">
+    <label>${label} ${isAuto ? '<span style="font-size:9px;color:#22d3ee;background:rgba(34,211,238,.15);border-radius:4px;padding:1px 4px">AUTO</span>' : ''}</label>
+    <input id="${id}" type="number" step="1" min="0" value="${val}" oninput="updateManualXG()" style="${isAuto?'border-color:rgba(34,211,238,.4)':''}">
   </div>`;
+
+  const xgSource = m.xgSource || "Kickora";
+
+  return `<div class="xg-manual-box">
+    <div class="xg-manual-head">
+      <div>
+        <div class="xg-manual-title">xG Stimato Kickora</div>
+        <div class="xg-manual-sub">${hasRealXG ? `Dati reali da ${xgSource}` : 'Inserisci gol totali ultime 5 · la media è automatica'}</div>
+      </div>
+      <span class="chip cyan">${hasRealXG ? 'AUTO' : 'PRE-MATCH'}</span>
+    </div>
+
+    ${hasRealXG ? `
+    <div class="xg-results" style="margin-top:0">
+      <div class="xg-result-card"><span>xG ${m.home}</span><b>${m.xgH.toFixed(2)}</b></div>
+      <div class="xg-result-card"><span>xG ${m.away}</span><b>${m.xgA.toFixed(2)}</b></div>
+      <div class="xg-result-card"><span>xG Totale</span><b>${(m.xgH+m.xgA).toFixed(2)}</b></div>
+      <div class="xg-result-card"><span>Over 1.5 stimato</span><b style="color:#22d3ee">${m.p.over15}%</b></div>
+      <div class="xg-result-card"><span>Over 2.5 stimato</span><b style="color:#a78bfa">${m.p.over25}%</b></div>
+      <div class="xg-result-card"><span>GG stimato</span><b style="color:#f472b6">${m.p.gg}%</b></div>
+    </div>
+    <p class="xg-note">✅ Dati xG forniti automaticamente da ${xgSource}</p>
+    ` : `
+    <div class="xg-manual-grid">
+      <div class="xg-team-card">
+        <h3>${m.home} <span style="font-size:12px;color:var(--muted);font-weight:400">— Casa</span></h3>
+        <div class="xg-input-grid">
+          ${inputField('homeGF','⚽ Gol fatti totali (ultimi 5)', d.homeGF, true)}
+          ${inputField('homeGA','🛡 Gol subiti totali (ultimi 5)', d.homeGA, true)}
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          Media: <span id="manualHomeAvgGF" style="color:#22d3ee;font-weight:900">—</span> &nbsp;·&nbsp; <span id="manualHomeAvgGA" style="color:#f472b6;font-weight:900">—</span>
+        </div>
+      </div>
+      <div class="xg-team-card">
+        <h3>${m.away} <span style="font-size:12px;color:var(--muted);font-weight:400">— Trasferta</span></h3>
+        <div class="xg-input-grid">
+          ${inputField('awayGF','⚽ Gol fatti totali (ultimi 5)', d.awayGF, true)}
+          ${inputField('awayGA','🛡 Gol subiti totali (ultimi 5)', d.awayGA, true)}
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          Media: <span id="manualAwayAvgGF" style="color:#22d3ee;font-weight:900">—</span> &nbsp;·&nbsp; <span id="manualAwayAvgGA" style="color:#f472b6;font-weight:900">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="xg-results">
+      <div class="xg-result-card"><span>xG ${m.home}</span><b id="manualHomeXG">-</b></div>
+      <div class="xg-result-card"><span>xG ${m.away}</span><b id="manualAwayXG">-</b></div>
+      <div class="xg-result-card"><span>xG Totale</span><b id="manualTotalXG">-</b></div>
+      <div class="xg-result-card"><span>Over 1.5 stimato</span><b id="manualOver15" style="color:#22d3ee">-</b></div>
+      <div class="xg-result-card"><span>Over 2.5 stimato</span><b id="manualOver25" style="color:#a78bfa">-</b></div>
+      <div class="xg-result-card"><span>GG stimato</span><b id="manualGG" style="color:#f472b6">-</b></div>
+    </div>
+    <div class="xg-result-card" style="margin-top:12px;text-align:left;padding:14px 18px">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">📋 Profilo Squadre</span>
+      <div id="manualProfile" style="margin-top:8px;font-size:13px;line-height:1.8">-</div>
+    </div>
+    <div class="xg-result-card" style="margin-top:10px;text-align:left;padding:14px 18px">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Consiglio xG</span>
+      <b id="manualConsiglio" style="display:block;margin-top:6px;font-size:15px">-</b>
+    </div>
+    <div class="xg-actions">
+      <button class="btn secondary tiny" onclick="updateManualXG()">Ricalcola xG</button>
+    </div>
+    <div class="xg-note">
+      📊 <b>SofaScore</b> → partita → Statistiche → ultime 5 &nbsp;|&nbsp; <b>FBref</b> → squadra → Match logs
+    </div>
+    `}
+  </div>`;
+}
 
   return `<div class="xg-manual-box">
     <div class="xg-manual-head">
@@ -1274,6 +1345,24 @@ function renderAnalysis(){
       <div class="stat"><div class="lab">GG/NOGOL</div><div class="val">${m.gg}</div></div>
       <div class="stat"><div class="lab">RISULTATO PROBABILE</div><div class="val" style="font-size:18px">${scoreDisplay}</div></div>
     </div>
+
+    ${(m.injuredHome?.length||m.injuredAway?.length) ? `
+    <div class="new-panel" style="margin-top:14px;border-color:rgba(250,204,21,.25)">
+      <div class="new-panel-head">
+        <span class="new-panel-title">🚑 Indisponibili</span>
+        <span class="chip" style="background:rgba(250,204,21,.15);color:#facc15">INFORTUNI/SQUALIFICHE</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:900;text-transform:uppercase;margin-bottom:6px">${m.home}</div>
+          ${m.injuredHome?.length ? m.injuredHome.map(p=>`<div style="font-size:13px;padding:4px 0;border-bottom:1px solid rgba(148,163,184,.1)">❌ ${p}</div>`).join('') : '<div style="color:var(--muted);font-size:13px">Nessun indisponibile</div>'}
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);font-weight:900;text-transform:uppercase;margin-bottom:6px">${m.away}</div>
+          ${m.injuredAway?.length ? m.injuredAway.map(p=>`<div style="font-size:13px;padding:4px 0;border-bottom:1px solid rgba(148,163,184,.1)">❌ ${p}</div>`).join('') : '<div style="color:var(--muted);font-size:13px">Nessun indisponibile</div>'}
+        </div>
+      </div>
+    </div>` : ''}
 
     <div class="bars">
       ${bar('1 Casa',m.p.h)}
@@ -1557,14 +1646,13 @@ async function checkLiveSystem(){
   try{
     const res = await fetch('/api/health', { cache:'no-store' });
     const data = await res.json();
-    const ok   = data.apiFootballConfigured === true;
+    const ok   = data.bsdConfigured === true;
     const mock = data.useMock === true;
-
     if(el('liveConnStatus')){
-      el('liveConnStatus').textContent = mock ? 'MOCK ATTIVO' : ok ? 'API CONNESSA' : 'API OFFLINE';
+      el('liveConnStatus').textContent = mock ? 'MOCK ATTIVO' : ok ? 'BSD CONNESSA' : 'API OFFLINE';
       el('liveConnStatus').className   = mock ? 'api-status demo' : ok ? 'api-status ready' : 'api-status demo';
     }
-    if(el('liveApiState')) el('liveApiState').textContent = mock ? 'Mock' : ok ? 'Online' : 'Offline';
+    if(el('liveApiState')) el('liveApiState').textContent = mock ? 'Mock' : ok ? 'BSD Live' : 'Offline';
     if(el('liveCacheStatus')) el('liveCacheStatus').textContent = data.cacheTtlMinutes ? data.cacheTtlMinutes + ' min' : '—';
     if(el('liveCallsStatus')) el('liveCallsStatus').textContent = (data.apiCallsToday ?? 0) + '/100';
     if(el('liveRefreshStatus')) el('liveRefreshStatus').textContent = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
