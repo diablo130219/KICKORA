@@ -165,37 +165,42 @@ function normalizeBSDEvent(ev, pred) {
 async function fetchBSDMatches(date) {
   if (!BSD_API_KEY) throw new Error("BSD_API_KEY non configurata");
 
-  // Step 1: tutti gli eventi del giorno
-  let allEvents = [];
+  // BSD ha due sistemi di ID separati tra /events/ e /predictions/
+  // Quindi usiamo solo /predictions/ come fonte unica — ha tutto dentro
+  let allPreds = [];
   let offset = 0;
   const limit = 200;
-  while (true) {
-    const data = await bsdFetch("/events/?date_from=" + date + "&date_to=" + date + "&limit=" + limit + "&offset=" + offset);
+  let foundOlderDates = false;
+
+  while (!foundOlderDates) {
+    const data = await bsdFetch("/predictions/?limit=" + limit + "&offset=" + offset);
     const results = data.results || [];
-    allEvents = allEvents.concat(results);
+    if (!results.length) break;
+
+    results.forEach(function(pred) {
+      if (!pred.event || !pred.event.event_date) return;
+      const predDate = pred.event.event_date.slice(0, 10);
+      if (predDate === date) {
+        allPreds.push(pred);
+      } else if (predDate < date) {
+        foundOlderDates = true;
+      }
+    });
+
     if (!data.next || results.length < limit) break;
     offset += limit;
     await sleep(200);
   }
-  console.log("[BSD] " + allEvents.length + " eventi per " + date);
 
-  // Step 2: prediction per ogni evento (1 chiamata per partita)
-  const matches = await Promise.all(allEvents.map(async function(ev) {
-    try {
-      const predData = await bsdFetch("/predictions/?event=" + ev.id);
-      const pred = (predData.results && predData.results[0]) || null;
-      if (pred && pred.event && pred.event.league_name) {
-        ev.league_name = pred.event.league_name;
-      }
-      return normalizeBSDEvent(ev, pred);
-    } catch(e) {
-      return normalizeBSDEvent(ev, null);
-    }
-  }));
+  console.log("[BSD] " + allPreds.length + " predictions per " + date);
 
-  const valid = matches.filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
-  console.log("[BSD] " + valid.length + " partite normalizzate");
-  return valid;
+  const matches = allPreds.map(function(pred) {
+    const ev = pred.event || {};
+    return normalizeBSDEvent(ev, pred);
+  }).filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
+
+  console.log("[BSD] " + matches.length + " partite normalizzate");
+  return matches;
 }
 
 function generateMockMatches(date) {
