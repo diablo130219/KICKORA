@@ -1033,7 +1033,32 @@ function buildWeather(m){
       const code = c.weathercode;
       const icon = code===0?'☀️':code<=3?'⛅':code<=48?'🌫️':code<=67?'🌧️':code<=77?'❄️':'⛈️';
       const desc = code===0?'Sereno':code<=3?'Parzialmente nuvoloso':code<=48?'Nebbia':code<=67?'Pioggia':code<=77?'Neve':'Temporale';
-      const impact = rain||code>50?'⚠️ Possibile impatto sul gioco (pioggia/vento)':wind>40?'💨 Vento forte — potrebbe limitare il gioco aereo':'✅ Condizioni favorevoli al gioco';
+      let impact, impactColor, bettingTip;
+      if(code>=70&&code<=77){
+        impact='❄️ Neve in corso'; impactColor='#a78bfa';
+        bettingTip='Partita imprevedibile — evita Over 2.5 e segni secchi. Preferisci DC o Under.';
+      } else if(code>=61&&code<=67){
+        impact='🌧️ Pioggia in corso'; impactColor='#facc15';
+        bettingTip='Favorisce Under 2.5 e gioco fisico. Meno gol da fuori area, cross ridotti. GG meno probabile.';
+      } else if(code>=51&&code<=59){
+        impact='🌦️ Pioggerella leggera'; impactColor='#facc15';
+        bettingTip='Lieve impatto sul gioco. Dati statistici restano affidabili ma valuta con cautela Over 2.5.';
+      } else if(wind>50){
+        impact='💨 Vento molto forte ('+wind+' km/h)'; impactColor='#f472b6';
+        bettingTip='Vento forte limita cross, gioco aereo e tiri da lontano. Favorisce Under e gioco basso corto.';
+      } else if(wind>35){
+        impact='💨 Vento moderato ('+wind+' km/h)'; impactColor='#facc15';
+        bettingTip='Possibile impatto su corner e cross. Meglio evitare mercati Over 3.5 e angoli.';
+      } else if(temp<2){
+        impact='🥶 Temperatura molto bassa ('+temp+'°C)'; impactColor='#a78bfa';
+        bettingTip='Freddo intenso può ridurre ritmo e qualità tecnica. Considera Under e gioco più fisico.';
+      } else if(code<=1){
+        impact='☀️ Condizioni ottimali'; impactColor='#4ade80';
+        bettingTip='Campo in ottime condizioni. I dati statistici sono pienamente affidabili — segui le probabilità Kickora.';
+      } else {
+        impact='⛅ Parzialmente nuvoloso'; impactColor='#4ade80';
+        bettingTip='Condizioni buone. Nessun impatto significativo sul gioco — dati statistici affidabili.';
+      }
 
       el2.innerHTML = `<div class="new-panel">
         <div class="new-panel-head">
@@ -1046,7 +1071,13 @@ function buildWeather(m){
           <div class="h2h-stat"><span>Condizioni</span><b>${icon} ${desc}</b></div>
           <div class="h2h-stat"><span>Precipitazioni</span><b>${rain?'🌧️ Sì':'✅ No'}</b></div>
         </div>
-        <div class="trend-profile" style="color:${rain||wind>40?'#facc15':'#4ade80'}">${impact}</div>
+        <div class="trend-profile" style="color:${impactColor}">
+          <span>${impact}</span>
+        </div>
+        <div style="background:rgba(2,6,23,.5);border:1px solid rgba(148,163,184,.15);border-radius:14px;padding:12px 14px;margin-top:10px">
+          <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:900">💡 Consiglio Betting</span>
+          <p style="margin-top:6px;font-size:13px;line-height:1.5;color:#dbeafe">${bettingTip}</p>
+        </div>
         <p class="new-panel-note">Fonte: Open-Meteo · aggiornato in tempo reale</p>
       </div>`;
     }catch(e){
