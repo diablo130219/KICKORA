@@ -14,6 +14,19 @@
 .new-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .new-panel-title{font-size:16px;font-weight:900}
 .new-panel-note{color:var(--muted);font-size:12px;margin-top:12px}
+.h2h-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.h2h-stat{background:rgba(2,6,23,.5);border:1px solid var(--border);border-radius:14px;padding:10px;text-align:center}
+.h2h-stat span{display:block;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.h2h-stat b{font-size:20px;font-weight:950}
+.h2h-list{display:grid;gap:8px}
+.h2h-row{display:grid;grid-template-columns:70px 1fr auto auto;gap:8px;align-items:center;background:rgba(2,6,23,.4);border-radius:12px;padding:10px 12px;border:1px solid rgba(148,163,184,.10)}
+.h2h-date{color:var(--muted);font-size:11px}
+.h2h-teams{font-size:13px;font-weight:700}
+.h2h-score{font-size:15px;text-align:center}
+.h2h-badges{display:flex;gap:4px}
+.mini-badge{font-size:10px;font-weight:900;border-radius:6px;padding:2px 6px}
+.mini-badge.gg{background:rgba(167,139,250,.2);color:#a78bfa}
+.mini-badge.ov{background:rgba(34,211,238,.2);color:#22d3ee}
 .trend-profile{display:flex;align-items:center;gap:10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:10px 14px;margin-top:10px;font-size:14px}
 .trend-profile b{font-size:16px;margin-left:auto}
 .ranking-list{display:grid;gap:8px;margin-top:4px}
@@ -991,7 +1004,77 @@ function xgInput(prefix, id, label, value, isAuto){
   </div>`;
 }
 
-// ─── TREND CAMPIONATO ─────────────────────────────────────────────────────────
+// ─── H2H ─────────────────────────────────────────────────────────────────────
+function buildH2H(m){
+  const containerId = `h2h-${String(m.id).replace(/\W/g,'')}`;
+
+  // Funzione globale per caricare H2H
+  window.loadH2H = async function(homeId, awayId, cid){
+    const box = document.getElementById(cid);
+    if(!box) return;
+    box.innerHTML = `<div class="new-panel"><div class="new-panel-head"><span class="new-panel-title">⚔️ Head to Head</span></div><p class="new-panel-note">Caricamento...</p></div>`;
+
+    try {
+      const res  = await fetch(`/api/h2h?home=${homeId}&away=${awayId}`);
+      const data = await res.json();
+      if(!data.ok || !data.fixtures?.length){
+        box.innerHTML = `<div class="new-panel"><div class="new-panel-head"><span class="new-panel-title">⚔️ Head to Head</span></div><p class="new-panel-note">Nessun precedente trovato.</p></div>`;
+        return;
+      }
+      const results  = data.fixtures.slice(0,5);
+      const ggCount  = results.filter(r=>r.goals.home>0&&r.goals.away>0).length;
+      const ov25     = results.filter(r=>r.goals.home+r.goals.away>2).length;
+      const avgGol   = (results.reduce((s,r)=>s+r.goals.home+r.goals.away,0)/results.length).toFixed(1);
+      const homeWins = results.filter(r=>r.goals.home>r.goals.away).length;
+
+      box.innerHTML = `<div class="new-panel">
+        <div class="new-panel-head">
+          <span class="new-panel-title">⚔️ Head to Head</span>
+          <span class="chip cyan">ULTIMI ${results.length}</span>
+        </div>
+        <div class="h2h-stats">
+          <div class="h2h-stat"><span>Media gol</span><b>${avgGol}</b></div>
+          <div class="h2h-stat"><span>GG</span><b>${ggCount}/${results.length}</b></div>
+          <div class="h2h-stat"><span>Over 2.5</span><b>${ov25}/${results.length}</b></div>
+          <div class="h2h-stat"><span>Vittorie casa</span><b>${homeWins}/${results.length}</b></div>
+        </div>
+        <div class="h2h-list">
+          ${results.map(r=>{
+            const tot=r.goals.home+r.goals.away;
+            const gg=r.goals.home>0&&r.goals.away>0;
+            const win=r.goals.home>r.goals.away;
+            const color=win?'#22d3ee':r.goals.home===r.goals.away?'#facc15':'#f472b6';
+            const date=new Date(r.fixture.date).toLocaleDateString('it-IT');
+            return `<div class="h2h-row">
+              <span class="h2h-date">${date}</span>
+              <span class="h2h-teams">${r.teams.home.name} vs ${r.teams.away.name}</span>
+              <span class="h2h-score" style="color:${color};font-weight:900">${r.goals.home}–${r.goals.away}</span>
+              <span class="h2h-badges">${gg?'<span class="mini-badge gg">GG</span>':''}${tot>2?'<span class="mini-badge ov">O2.5</span>':''}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        <p class="new-panel-note">Fonte: API-Football · dati reali</p>
+      </div>`;
+    } catch(e){
+      box.innerHTML = `<div class="new-panel"><div class="new-panel-head"><span class="new-panel-title">⚔️ Head to Head</span></div><p class="new-panel-note">Errore caricamento H2H.</p></div>`;
+    }
+  };
+
+  // In mock mode mostra solo il bottone
+  return `<div id="${containerId}">
+    <div class="new-panel">
+      <div class="new-panel-head">
+        <span class="new-panel-title">⚔️ Head to Head</span>
+        <span class="chip cyan">SU RICHIESTA</span>
+      </div>
+      <p class="new-panel-note" style="margin-bottom:12px">Carica gli ultimi scontri diretti tra le due squadre — 1 chiamata API.</p>
+      <button class="btn secondary tiny" onclick="loadH2H('${m.homeId||0}','${m.awayId||0}','${containerId}')">Carica H2H</button>
+      <p class="new-panel-note" style="margin-top:10px">⚠️ Disponibile con API-Football · con dati mock non funziona</p>
+    </div>
+  </div>`;
+}
+
+
 function buildLeagueTrend(m){
   const compMatches = filtered.filter(x=>x.comp===m.comp);
   const tot = compMatches.length || 1;
@@ -1287,7 +1370,7 @@ function renderAnalysis(){
       ${bar('GG',m.p.gg)}
     </div>
 
-    ${buildRadarChart(m)}${buildSimulator(m)}${buildProPanel(m)}${buildLeagueTrend(m)}${buildWeather(m)}<div id="manualXGMount">${buildManualXG(m)}</div>${buildRanking()}
+    ${buildRadarChart(m)}${buildSimulator(m)}${buildProPanel(m)}${buildLeagueTrend(m)}${buildH2H(m)}${buildWeather(m)}<div id="manualXGMount">${buildManualXG(m)}</div>${buildRanking()}
   `;
 }
 

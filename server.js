@@ -287,6 +287,8 @@ function normalizeApiFootballFixture(row) {
 
   return {
     id:       String(fixture.id),
+    homeId:   teams.home?.id || 0,
+    awayId:   teams.away?.id || 0,
     comp:     league.name    || "Competizione",
     date:     fixture.date   || null,
     time:     fixture.date
@@ -369,6 +371,23 @@ app.get("/api/cache/clear", (req, res) => {
   res.json({ ok: true, message: "Cache svuotata" });
 });
 
+// ─── ENDPOINT: H2H ───────────────────────────────────────────────────────────
+app.get("/api/h2h", async (req, res) => {
+  const { home, away } = req.query;
+  if (!home || !away) return res.status(400).json({ ok: false, error: "Parametri home e away richiesti" });
+
+  if (USE_MOCK) {
+    return res.json({ ok: false, error: "H2H non disponibile in modalità mock" });
+  }
+
+  try {
+    const data = await safeApiFootballCall(`/fixtures/headtohead?h2h=${home}-${away}&last=5`);
+    res.json({ ok: true, fixtures: data.response || [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ─── ENDPOINT: MATCHES ────────────────────────────────────────────────────────
 app.get("/api/matches/today", async (req, res) => {
   try {
@@ -427,10 +446,35 @@ app.get("/api/matches/today", async (req, res) => {
   }
 });
 
+// ─── AUTO-FETCH ALL'AVVIO ─────────────────────────────────────────────────────
+async function autoFetchOnStartup() {
+  const date = localDateRome(0);
+  const key  = getCacheKey(date);
+  console.log(`[Startup] Auto-fetch partite per ${date}...`);
+  try {
+    let matches;
+    if (USE_MOCK) {
+      matches = generateMockMatches(date);
+      console.log(`[Startup] Mock: ${matches.length} partite generate`);
+    } else {
+      const data = await safeApiFootballCall(`/fixtures?date=${date}`);
+      matches = (data.response || []).map(normalizeApiFootballFixture);
+      console.log(`[Startup] API-Football: ${matches.length} partite caricate`);
+    }
+    cache.set(key, { createdAt: Date.now(), matches, source: USE_MOCK ? "mock" : "api-football" });
+    console.log(`[Startup] Cache popolata ✅`);
+  } catch (e) {
+    console.warn(`[Startup] Auto-fetch fallito: ${e.message}`);
+  }
+}
+
 // ─── START ────────────────────────────────────────────────────────────────────
 app.listen(PORT, HOST, () => {
   console.log(`\nKICKORA in ascolto su http://${HOST}:${PORT}`);
   console.log(`Modalità: ${USE_MOCK ? "⚠️  MOCK (dati simulati)" : "✅  API-Football REALE"}`);
   console.log(`Cache TTL: ${CACHE_TTL_MINUTES} minuti`);
   if (!USE_MOCK) console.log(`Rate limit interno: max ${MAX_PER_MINUTE} req/min, intervallo min ${MIN_INTERVAL_MS/1000}s`);
+
+  // Auto-fetch partite all'avvio (dopo 3 secondi per dare tempo al server di stabilizzarsi)
+  setTimeout(autoFetchOnStartup, 3000);
 });
