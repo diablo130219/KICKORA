@@ -88,6 +88,8 @@ function normalizeBSDEvent(ev, pred) {
     const btts= pred.markets.btts || {};
     const sc  = pred.markets.score || {};
 
+    console.log("[DEBUG] " + (ev.home_team||"?") + " vs " + (ev.away_team||"?") + " | prob_home:" + mr.prob_home + " over15:" + ou.prob_over_15 + " gg:" + btts.prob_yes);
+
     // Le probabilità in BSD sono già in percentuale (es. 27.8 non 0.278)
     homeProb = Math.round(mr.prob_home || 0);
     drawProb = Math.round(mr.prob_draw || 0);
