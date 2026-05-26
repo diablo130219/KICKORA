@@ -165,44 +165,41 @@ function normalizeBSDEvent(ev, pred) {
 async function fetchBSDMatches(date) {
   if (!BSD_API_KEY) throw new Error("BSD_API_KEY non configurata");
 
-  let allPreds = [];
+  // Step 1: carica tutti gli eventi del giorno
+  let allEvents = [];
   let offset = 0;
   const limit = 200;
-
-  // Prova prima con il filtro data sulle predictions
   while (true) {
-    const data = await bsdFetch("/predictions/?event__event_date__date=" + date + "&limit=" + limit + "&offset=" + offset);
+    const data = await bsdFetch("/events/?date_from=" + date + "&date_to=" + date + "&limit=" + limit + "&offset=" + offset);
     const results = data.results || [];
-    allPreds = allPreds.concat(results);
-    console.log("[BSD] Batch: " + results.length + " predictions, next: " + (data.next ? "si" : "no"));
+    allEvents = allEvents.concat(results);
     if (!data.next || results.length < limit) break;
     offset += limit;
-    await sleep(300);
+    await sleep(200);
+  }
+  console.log("[BSD] " + allEvents.length + " eventi per " + date);
+
+  // Step 2: per ogni evento carica la prediction
+  const matches = [];
+  for (var i = 0; i < allEvents.length; i++) {
+    const ev = allEvents[i];
+    try {
+      const predData = await bsdFetch("/predictions/?event=" + ev.id);
+      const pred = (predData.results && predData.results[0]) || null;
+      // La prediction ha league_name dentro pred.event — usalo per il nome campionato
+      if (pred && pred.event) {
+        ev.league_name = pred.event.league_name || ev.league_name;
+      }
+      matches.push(normalizeBSDEvent(ev, pred));
+    } catch(e) {
+      matches.push(normalizeBSDEvent(ev, null));
+    }
+    // Piccolo delay per non sovraccaricare (BSD non ha rate limit ma meglio essere gentili)
+    if (i % 20 === 19) await sleep(100);
   }
 
-  console.log("[BSD] Totale predictions per " + date + ": " + allPreds.length);
-
-  // Se non trova niente con il filtro data, prova senza filtro e filtra manualmente
-  if (allPreds.length === 0) {
-    console.log("[BSD] Nessuna prediction con filtro data, provo senza filtro...");
-    const data = await bsdFetch("/predictions/?limit=50");
-    const results = data.results || [];
-    // Filtra per data manualmente
-    allPreds = results.filter(function(pred) {
-      const evDate = pred.event && pred.event.event_date;
-      if (!evDate) return false;
-      return evDate.startsWith(date);
-    });
-    console.log("[BSD] Predictions filtrate manualmente: " + allPreds.length);
-  }
-
-  const matches = allPreds.map(function(pred) {
-    const ev = pred.event || {};
-    return normalizeBSDEvent(ev, pred);
-  }).filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
-
-  console.log("[BSD] Partite normalizzate: " + matches.length);
-  return matches;
+  console.log("[BSD] " + matches.length + " partite normalizzate");
+  return matches.filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
 }
 
 function generateMockMatches(date) {
