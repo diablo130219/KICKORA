@@ -382,6 +382,8 @@ app.get("/api/debug/markets", async function(req, res) {
     });
   } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
 });
+
+app.get("/api/cache/status", function(req, res) {
   res.json({ ok:true, cacheTtlMinutes:CACHE_TTL_MINUTES, items:Array.from(cache.entries()).map(function(entry) { return { key:entry[0], count:(entry[1].matches&&entry[1].matches.length)||0, valid:isCacheValid(entry[1]) }; }) });
 });
 
