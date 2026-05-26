@@ -1217,68 +1217,6 @@ function buildManualXG(m){
   </div>`;
 }
 
-  return `<div class="xg-manual-box">
-    <div class="xg-manual-head">
-      <div>
-        <div class="xg-manual-title">xG Stimato Kickora</div>
-        <div class="xg-manual-sub">Gol totali ultime 5 partite · la media viene calcolata automaticamente</div>
-      </div>
-      <span class="chip cyan">PRE-MATCH</span>
-    </div>
-
-    <div class="xg-manual-grid">
-      <div class="xg-team-card">
-        <h3>${m.home} <span style="font-size:12px;color:var(--muted);font-weight:400">— Casa</span></h3>
-        <div class="xg-input-grid">
-          ${inputField('homeGF','⚽ Gol fatti totali (ultimi 5)', d.homeGF)}
-          ${inputField('homeGA','🛡 Gol subiti totali (ultimi 5)', d.homeGA)}
-        </div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
-          Media: <span id="manualHomeAvgGF" style="color:#22d3ee;font-weight:900">—</span> &nbsp;·&nbsp; <span id="manualHomeAvgGA" style="color:#f472b6;font-weight:900">—</span>
-        </div>
-      </div>
-      <div class="xg-team-card">
-        <h3>${m.away} <span style="font-size:12px;color:var(--muted);font-weight:400">— Trasferta</span></h3>
-        <div class="xg-input-grid">
-          ${inputField('awayGF','⚽ Gol fatti totali (ultimi 5)', d.awayGF)}
-          ${inputField('awayGA','🛡 Gol subiti totali (ultimi 5)', d.awayGA)}
-        </div>
-        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
-          Media: <span id="manualAwayAvgGF" style="color:#22d3ee;font-weight:900">—</span> &nbsp;·&nbsp; <span id="manualAwayAvgGA" style="color:#f472b6;font-weight:900">—</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="xg-results">
-      <div class="xg-result-card"><span>xG ${m.home}</span><b id="manualHomeXG">-</b></div>
-      <div class="xg-result-card"><span>xG ${m.away}</span><b id="manualAwayXG">-</b></div>
-      <div class="xg-result-card"><span>xG Totale</span><b id="manualTotalXG">-</b></div>
-      <div class="xg-result-card"><span>Over 1.5 stimato</span><b id="manualOver15" style="color:#22d3ee">-</b></div>
-      <div class="xg-result-card"><span>Over 2.5 stimato</span><b id="manualOver25" style="color:#a78bfa">-</b></div>
-      <div class="xg-result-card"><span>GG stimato</span><b id="manualGG" style="color:#f472b6">-</b></div>
-    </div>
-
-    <div class="xg-result-card" style="margin-top:12px;text-align:left;padding:14px 18px">
-      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">📋 Profilo Squadre</span>
-      <div id="manualProfile" style="margin-top:8px;font-size:13px;line-height:1.8">-</div>
-    </div>
-
-    <div class="xg-result-card" style="margin-top:10px;text-align:left;padding:14px 18px">
-      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Consiglio xG</span>
-      <b id="manualConsiglio" style="display:block;margin-top:6px;font-size:15px">-</b>
-    </div>
-
-    <div class="xg-actions">
-      <button class="btn secondary tiny" onclick="updateManualXG()">Ricalcola xG</button>
-    </div>
-
-    <div class="xg-note">
-      📊 Dove trovare i dati: <b>SofaScore</b> → partita → Statistiche → ultime 5 partite &nbsp;|&nbsp; <b>FBref</b> → squadra → Match logs<br>
-      Con API-Football i valori si compilano automaticamente.
-    </div>
-  </div>`;
-}
-
 function renderAnalysis(){
   if(!current){ renderEmptyState(); return; }
   const m = current;
