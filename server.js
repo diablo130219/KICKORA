@@ -70,27 +70,43 @@ function chooseSign(o) {
 }
 
 function normalizeBSDEvent(ev, pred) {
-  const comp = (ev.competition && ev.competition.name) || ev.league_name || ev.competition_name || "Competizione";
+  // Nome campionato — può venire dall'evento o dalle predictions
+  const comp = ev.league_name || (pred && pred.event && pred.event.league_name) || "Competizione";
+
+  // Quote — BSD non le fornisce nell'endpoint /events/ base
   const oddsH = Number(ev.odds_home || ev.home_odds || 0);
   const oddsD = Number(ev.odds_draw || ev.draw_odds || 0);
   const oddsA = Number(ev.odds_away || ev.away_odds || 0);
-  let homeProb = 0, drawProb = 0, awayProb = 0, over15 = 0, over25 = 0, gg = 0, xgH = 0, xgA = 0;
 
-  if (pred) {
-    homeProb = Math.round((pred.home_win_prob || pred.home_prob || 0) * 100);
-    drawProb = Math.round((pred.draw_prob || pred.prob_draw || 0) * 100);
-    awayProb = Math.round((pred.away_win_prob || pred.away_prob || 0) * 100);
-    over25 = Math.round((pred.over_2_5_prob || pred.over25_prob || 0) * 100);
-    over15 = Math.round((pred.over_1_5_prob || pred.over15_prob || over25 * 1.25 || 0) * 100);
-    gg = Math.round((pred.btts_prob || pred.gg_prob || 0) * 100);
-    xgH = Number(pred.home_xg || pred.xg_home || 0);
-    xgA = Number(pred.away_xg || pred.xg_away || 0);
+  let homeProb = 0, drawProb = 0, awayProb = 0, over15 = 0, over25 = 0, gg = 0, xgH = 0, xgA = 0;
+  let mostLikelyScore = "-";
+
+  if (pred && pred.markets) {
+    const mr  = pred.markets.match_result || {};
+    const xg  = pred.markets.expected_goals || {};
+    const ou  = pred.markets.over_under || {};
+    const btts= pred.markets.btts || {};
+    const sc  = pred.markets.score || {};
+
+    // Le probabilità in BSD sono già in percentuale (es. 27.8 non 0.278)
+    homeProb = Math.round(mr.prob_home || 0);
+    drawProb = Math.round(mr.prob_draw || 0);
+    awayProb = Math.round(mr.prob_away || 0);
+    over15   = Math.round(ou.prob_over_15 || 0);
+    over25   = Math.round(ou.prob_over_25 || 0);
+    gg       = Math.round(btts.prob_yes || 0);
+    xgH      = Number(xg.home || 0);
+    xgA      = Number(xg.away || 0);
+    mostLikelyScore = sc.most_likely || "-";
+
+    // Normalizza se necessario
     if (homeProb + drawProb + awayProb > 0) {
       const n = normalizeProbs(homeProb, drawProb, awayProb);
       homeProb = n.h; drawProb = n.x; awayProb = n.a;
     }
   }
 
+  // Fallback alle quote se le prob sono ancora 0
   if (!homeProb && oddsH > 0) {
     const n = normalizeProbs(implied(oddsH), implied(oddsD), implied(oddsA));
     homeProb = n.h; drawProb = n.x; awayProb = n.a;
@@ -112,15 +128,19 @@ function normalizeBSDEvent(ev, pred) {
   const ggLbl = gg >= 62 ? "GG" : gg >= 52 ? "GG leggero" : "No Gol leggero";
   const dateStr = ev.event_date || ev.date || null;
   const time = dateStr ? new Date(dateStr).toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" }) : "-";
-  const injH = ((ev.unavailable_players && ev.unavailable_players.home) || ev.injuries_home || []).map(function(p) { return p.name || p.player_name || ""; }).filter(Boolean);
-  const injA = ((ev.unavailable_players && ev.unavailable_players.away) || ev.injuries_away || []).map(function(p) { return p.name || p.player_name || ""; }).filter(Boolean);
+  const injH = ((ev.unavailable_players && ev.unavailable_players.home) || []).map(function(p) { return p.name || p.player_name || ""; }).filter(Boolean);
+  const injA = ((ev.unavailable_players && ev.unavailable_players.away) || []).map(function(p) { return p.name || p.player_name || ""; }).filter(Boolean);
+
+  // Meteo da BSD (già nell'evento!)
+  const weather = ev.weather || null;
+  const pitch   = ev.pitch_condition || null;
 
   return {
     id: String(ev.id), comp: comp, date: dateStr, time: time,
-    home: ev.home_team || ev.home || "Casa", away: ev.away_team || ev.away || "Trasferta",
+    home: ev.home_team || "Casa", away: ev.away_team || "Trasferta",
     homeId: ev.home_team_id || 0, awayId: ev.away_team_id || 0,
     rank: "-", formH: ev.home_form || "-", formA: ev.away_form || "-",
-    xgH: xgH, xgA: xgA, xgSource: pred ? "BSD Predictions" : oddsH > 0 ? "Quote implicite" : "Stima Kickora",
+    xgH: xgH, xgA: xgA, xgSource: pred ? "BSD Predictions" : "Stima Kickora",
     odds: { h: oddsH, d: oddsD, a: oddsA },
     p: {
       h: homeProb, x: drawProb, a: awayProb,
@@ -133,37 +153,41 @@ function normalizeBSDEvent(ev, pred) {
       cards25: null, cards35: null, u55: null, u65: null, u75: null
     },
     safe: safe, segno: sign, over: over, gg: ggLbl,
-    value: oddsH > 0 ? "1: " + oddsH + " / X: " + oddsD + " / 2: " + oddsA : "Quote non disponibili",
+    value: oddsH > 0 ? "1: " + oddsH + " / X: " + oddsD + " / 2: " + oddsA : mostLikelyScore !== "-" ? "Risultato atteso: " + mostLikelyScore : "Quote non disponibili",
     risk: risk, score: kscore, isLiveApi: true, isMock: false,
     injuredHome: injH, injuredAway: injA,
+    mostLikelyScore: mostLikelyScore,
+    weather: weather, pitchCondition: pitch,
     status: ev.status || "NS", goals_home: ev.home_score || null, goals_away: ev.away_score || null
   };
 }
 
 async function fetchBSDMatches(date) {
   if (!BSD_API_KEY) throw new Error("BSD_API_KEY non configurata");
-  let allEvents = [];
+
+  // Usa /predictions/ che ha league_name e struttura completa
+  let allPreds = [];
   let offset = 0;
   const limit = 200;
+
   while (true) {
-    const data = await bsdFetch("/events/?date_from=" + date + "&date_to=" + date + "&limit=" + limit + "&offset=" + offset);
+    const data = await bsdFetch("/predictions/?event__event_date__date=" + date + "&limit=" + limit + "&offset=" + offset);
     const results = data.results || [];
-    allEvents = allEvents.concat(results);
+    allPreds = allPreds.concat(results);
     if (!data.next || results.length < limit) break;
     offset += limit;
     await sleep(300);
   }
-  console.log("[BSD] " + allEvents.length + " partite per " + date);
-  const withPreds = await Promise.allSettled(allEvents.map(async function(ev) {
-    try {
-      const predData = await bsdFetch("/predictions/?event=" + ev.id);
-      const pred = (predData.results && predData.results[0]) || null;
-      return normalizeBSDEvent(ev, pred);
-    } catch(e) {
-      return normalizeBSDEvent(ev, null);
-    }
-  }));
-  return withPreds.filter(function(r) { return r.status === "fulfilled"; }).map(function(r) { return r.value; }).filter(function(m) { return m.home && m.away; });
+
+  console.log("[BSD] " + allPreds.length + " predictions trovate per " + date);
+
+  // Normalizza usando i dati dell'evento dentro la prediction
+  const matches = allPreds.map(function(pred) {
+    const ev = pred.event || {};
+    return normalizeBSDEvent(ev, pred);
+  }).filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
+
+  return matches;
 }
 
 function generateMockMatches(date) {
