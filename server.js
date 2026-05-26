@@ -165,7 +165,7 @@ function normalizeBSDEvent(ev, pred) {
 async function fetchBSDMatches(date) {
   if (!BSD_API_KEY) throw new Error("BSD_API_KEY non configurata");
 
-  // Step 1: tutti gli eventi del giorno (funziona - dava 147 partite)
+  // Step 1: tutti gli eventi del giorno
   let allEvents = [];
   let offset = 0;
   const limit = 200;
@@ -179,32 +179,23 @@ async function fetchBSDMatches(date) {
   }
   console.log("[BSD] " + allEvents.length + " eventi per " + date);
 
-  // Step 2: predictions filtrate per data (una sola chiamata)
-  const predData = await bsdFetch("/predictions/?event__event_date__date=" + date + "&limit=200");
-  const predResults = predData.results || [];
-  console.log("[BSD] " + predResults.length + " predictions per " + date);
-
-  // Step 3: mappa per nome squadra
-  var predMap = {};
-  predResults.forEach(function(pred) {
-    if (pred.event) {
-      const key = (pred.event.home_team + "|" + pred.event.away_team).toLowerCase();
-      predMap[key] = pred;
+  // Step 2: prediction per ogni evento (1 chiamata per partita)
+  const matches = await Promise.all(allEvents.map(async function(ev) {
+    try {
+      const predData = await bsdFetch("/predictions/?event=" + ev.id);
+      const pred = (predData.results && predData.results[0]) || null;
+      if (pred && pred.event && pred.event.league_name) {
+        ev.league_name = pred.event.league_name;
+      }
+      return normalizeBSDEvent(ev, pred);
+    } catch(e) {
+      return normalizeBSDEvent(ev, null);
     }
-  });
+  }));
 
-  // Step 4: abbina e normalizza
-  const matches = allEvents.map(function(ev) {
-    const key = ((ev.home_team || "") + "|" + (ev.away_team || "")).toLowerCase();
-    const pred = predMap[key] || null;
-    if (pred && pred.event && pred.event.league_name) {
-      ev.league_name = pred.event.league_name;
-    }
-    return normalizeBSDEvent(ev, pred);
-  }).filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
-
-  console.log("[BSD] " + matches.length + " partite, " + Object.keys(predMap).length + " predictions abbinate");
-  return matches;
+  const valid = matches.filter(function(m) { return m.home && m.away && m.home !== "Casa"; });
+  console.log("[BSD] " + valid.length + " partite normalizzate");
+  return valid;
 }
 
 function generateMockMatches(date) {
