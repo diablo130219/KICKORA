@@ -84,40 +84,56 @@ function chooseSign({ homeProb, drawProb, awayProb, over25, gg }){
 }
 
 function normalizeBSDEvent(ev, pred){
-  // Quote da BSD
-  const oddsH   = Number(ev.odds_home || 0);
-  const oddsD   = Number(ev.odds_draw || 0);
-  const oddsA   = Number(ev.odds_away || 0);
+  // BSD usa competition invece di league_name
+  const compName = ev.competition?.name || ev.league_name || ev.competition_name || ev.tournament_name || "Competizione";
 
-  // Probabilità: usa predictions BSD se disponibili, altrimenti ricava dalle quote
+  // Quote da BSD — può usare diversi nomi di campo
+  const oddsH = Number(ev.odds_home || ev.home_odds || ev.odd_home || 0);
+  const oddsD = Number(ev.odds_draw || ev.draw_odds || ev.odd_draw || 0);
+  const oddsA = Number(ev.odds_away || ev.away_odds || ev.odd_away || 0);
+
   let homeProb, drawProb, awayProb, over15, over25, gg, xgH, xgA;
 
   if(pred){
-    homeProb = Math.round((pred.home_win_prob || 0) * 100);
-    drawProb = Math.round((pred.draw_prob     || 0) * 100);
-    awayProb = Math.round((pred.away_win_prob || 0) * 100);
-    over25   = Math.round((pred.over_2_5_prob || 0) * 100);
-    over15   = Math.round((pred.over_1_5_prob || pred.over_2_5_prob * 1.25 || 0) * 100);
-    gg       = Math.round((pred.btts_prob     || 0) * 100);
-    xgH      = Number(pred.home_xg || 0);
-    xgA      = Number(pred.away_xg || 0);
-  } else {
+    homeProb = Math.round((pred.home_win_prob || pred.home_prob || pred.prob_home || 0) * 100);
+    drawProb = Math.round((pred.draw_prob     || pred.prob_draw || 0) * 100);
+    awayProb = Math.round((pred.away_win_prob || pred.away_prob || pred.prob_away || 0) * 100);
+    over25   = Math.round((pred.over_2_5_prob || pred.over25_prob || 0) * 100);
+    over15   = Math.round((pred.over_1_5_prob || pred.over15_prob || (over25 * 1.25) || 0) * 100);
+    gg       = Math.round((pred.btts_prob     || pred.gg_prob || 0) * 100);
+    xgH      = Number(pred.home_xg || pred.xg_home || 0);
+    xgA      = Number(pred.away_xg || pred.xg_away || 0);
+
+    // Normalizza se le prob non sommano a 100
+    if(homeProb + drawProb + awayProb > 0){
+      const norm = normalizeProbs(homeProb, drawProb, awayProb);
+      homeProb = norm.h; drawProb = norm.x; awayProb = norm.a;
+    }
+  }
+
+  // Fallback alle quote se le prob sono ancora 0
+  if(!homeProb && oddsH > 0){
     const hRaw = implied(oddsH);
     const xRaw = implied(oddsD);
     const aRaw = implied(oddsA);
     const norm = normalizeProbs(hRaw, xRaw, aRaw);
-    homeProb   = norm.h; drawProb = norm.x; awayProb = norm.a;
-    over25     = 52; over15 = 72; gg = 54;
-    xgH        = 0;  xgA   = 0;
+    homeProb = norm.h; drawProb = norm.x; awayProb = norm.a;
+    if(!over25) over25 = 52;
+    if(!over15) over15 = 72;
+    if(!gg)     gg     = 54;
   }
 
-  // Forma (BSD non la fornisce nell'endpoint base — placeholder)
-  const formH = ev.home_form || "-";
-  const formA = ev.away_form || "-";
+  // Ultimo fallback valori di default
+  if(!homeProb){ homeProb = 40; drawProb = 28; awayProb = 32; }
+  if(!over15)   over15 = 72;
+  if(!over25)   over25 = 52;
+  if(!gg)       gg     = 54;
 
-  // Infortuni
-  const injuredHome = (ev.unavailable_players?.home || []).map(p => p.name || p.player_name).filter(Boolean);
-  const injuredAway = (ev.unavailable_players?.away || []).map(p => p.name || p.player_name).filter(Boolean);
+  const formH = ev.home_form || ev.home_recent_form || "-";
+  const formA = ev.away_form || ev.away_recent_form || "-";
+
+  const injuredHome = (ev.unavailable_players?.home || ev.injuries?.home || []).map(p => p.name || p.player_name || p.player).filter(Boolean);
+  const injuredAway = (ev.unavailable_players?.away || ev.injuries?.away || []).map(p => p.name || p.player_name || p.player).filter(Boolean);
 
   const kscore = scoreFromData({ homeProb, drawProb, awayProb, over15, over25, gg });
   const risk   = kscore >= 74 ? "Basso" : kscore >= 63 ? "Medio" : "Alto";
@@ -126,34 +142,34 @@ function normalizeBSDEvent(ev, pred){
   const over   = over25 >= 58 ? "Over 2.5" : over15 >= 66 ? "Over 1.5" : "Over 0.5/1.5";
   const ggLbl  = gg >= 62 ? "GG" : gg >= 52 ? "GG leggero" : "No Gol leggero";
 
-  const time = ev.event_date
-    ? new Date(ev.event_date).toLocaleTimeString("it-IT", { timeZone:"Europe/Rome", hour:"2-digit", minute:"2-digit" })
+  const time = ev.event_date || ev.date || ev.kickoff
+    ? new Date(ev.event_date || ev.date || ev.kickoff).toLocaleTimeString("it-IT", { timeZone:"Europe/Rome", hour:"2-digit", minute:"2-digit" })
     : "-";
 
   return {
     id:    String(ev.id),
-    comp:  ev.league_name  || "Competizione",
-    date:  ev.event_date   || null,
+    comp:  compName,
+    date:  ev.event_date || ev.date || null,
     time,
-    home:  ev.home_team    || "Casa",
-    away:  ev.away_team    || "Trasferta",
-    homeId: ev.home_team_id || 0,
-    awayId: ev.away_team_id || 0,
+    home:  ev.home_team  || ev.home || "Casa",
+    away:  ev.away_team  || ev.away || "Trasferta",
+    homeId: ev.home_team_id || ev.home_id || 0,
+    awayId: ev.away_team_id || ev.away_id || 0,
     rank: "-",
     formH, formA,
-    xgH, xgA,
-    xgSource: pred ? "BSD Predictions" : "Quote implicite",
+    xgH: xgH || 0, xgA: xgA || 0,
+    xgSource: pred ? "BSD Predictions" : oddsH > 0 ? "Quote implicite" : "Stima Kickora",
     odds: { h: oddsH, d: oddsD, a: oddsA },
     p: {
       h: homeProb, x: drawProb, a: awayProb,
-      dc1x:    Math.min(96, homeProb + drawProb),
-      dcx2:    Math.min(96, awayProb + drawProb),
-      over05:  Math.min(96, over15 + 8),
-      over15,  over25,
-      over35:  Math.max(18, over25 - 22),
-      u25:     Math.max(20, 100 - over25),
-      u35:     72,
-      gg,      ng: Math.max(15, 100 - gg),
+      dc1x: Math.min(96, homeProb + drawProb),
+      dcx2: Math.min(96, awayProb + drawProb),
+      over05: Math.min(96, over15 + 8),
+      over15, over25,
+      over35: Math.max(18, over25 - 22),
+      u25:    Math.max(20, 100 - over25),
+      u35:    72,
+      gg,     ng: Math.max(15, 100 - gg),
       pt05: null, pt15: null, st05: null, st15: null,
       btts1: null, btts2: null,
       corners75: null, corners85: null,
@@ -161,13 +177,13 @@ function normalizeBSDEvent(ev, pred){
       cards25: null, cards35: null, u55: null, u65: null, u75: null
     },
     safe, segno: sign, over, gg: ggLbl,
-    value:   oddsH > 0 ? `1: ${oddsH} / X: ${oddsD} / 2: ${oddsA}` : "Quote non disponibili",
-    risk,    score: kscore,
+    value: oddsH > 0 ? `1: ${oddsH} / X: ${oddsD} / 2: ${oddsA}` : "Quote non disponibili",
+    risk, score: kscore,
     isLiveApi: true, isMock: false,
     injuredHome, injuredAway,
     status: ev.status || "NS",
-    goals_home: ev.home_score ?? null,
-    goals_away: ev.away_score ?? null
+    goals_home: ev.home_score ?? ev.score_home ?? null,
+    goals_away: ev.away_score ?? ev.score_away ?? null
   };
 }
 
@@ -365,8 +381,34 @@ async function autoFetchOnStartup(){
   }
 }
 
-// ─── ENDPOINTS ────────────────────────────────────────────────────────────────
-app.get("/api/health", (req,res) => {
+app.get("/api/debug/bsd", async (req,res) => {
+  if(USE_MOCK) return res.json({ok:false, error:"Modalità mock attiva"});
+  try {
+    const date = localDateRome(0);
+    const data = await bsdFetch(`/events/?date_from=${date}&date_to=${date}&limit=1`);
+    const ev   = data.results?.[0] || {};
+    // Mostra tutti i campi del primo evento
+    res.json({ ok:true, totalCount:data.count, firstEventKeys:Object.keys(ev), firstEvent:ev });
+  } catch(e){
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
+app.get("/api/debug/pred", async (req,res) => {
+  if(USE_MOCK) return res.json({ok:false, error:"Modalità mock attiva"});
+  try {
+    const date = localDateRome(0);
+    const data = await bsdFetch(`/events/?date_from=${date}&date_to=${date}&limit=1`);
+    const ev   = data.results?.[0];
+    if(!ev) return res.json({ok:false, error:"Nessuna partita trovata"});
+    const pred = await bsdFetch(`/predictions/?event=${ev.id}`);
+    res.json({ ok:true, eventId:ev.id, predictionKeys:Object.keys(pred.results?.[0]||{}), prediction:pred.results?.[0] });
+  } catch(e){
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
+// ─── ENDPOINT: HEALTH ─────────────────────────────────────────────────────────
   res.json({
     ok: true,
     provider:            USE_MOCK ? "MOCK" : "BSD",
