@@ -923,43 +923,61 @@ function defaultManualStats(m){
   const baseHome = Number(m.xgH || 1.25);
   const baseAway = Number(m.xgA || 1.05);
   return {
-    homeGoalsFor5:    baseHome.toFixed(1),
-    homeGoalsAgainst5:Math.max(0.5, baseAway * 0.85).toFixed(1),
-    awayGoalsFor5:    baseAway.toFixed(1),
-    awayGoalsAgainst5:Math.max(0.5, baseHome * 0.85).toFixed(1)
+    homeGF: Math.round(baseHome * 5),
+    homeGA: Math.round(baseAway * 0.85 * 5),
+    awayGF: Math.round(baseAway * 5),
+    awayGA: Math.round(baseHome * 0.85 * 5)
   };
 }
 
 function calcManualXG(prefix){
-  const val = id => Number((document.getElementById(prefix+id)?.value||0).toString().replace(',','.'));
-  const gf5 = val('GoalsFor5');
-  const ga5 = val('GoalsAgainst5');
-  // xG stimato: media gol fatti ultime 5 pesa 60%, gol subiti avversario pesa 40%
-  const xg = (gf5 * 0.60) + (ga5 * 0.40);
-  return Math.max(0.15, Math.min(4.50, xg));
+  const val = id => Math.max(0, Number((document.getElementById(prefix+id)?.value||0).toString().replace(',','.')));
+  const gf = val('GF');
+  const ga = val('GA');
+  const avgGF = gf / 5;
+  const avgGA = ga / 5;
+  const xg = (avgGF * 0.60) + (avgGA * 0.40);
+  return {xg: Math.max(0.15, Math.min(4.50, xg)), avgGF, avgGA};
 }
 
 function updateManualXG(){
-  const home  = calcManualXG('home');
-  const away  = calcManualXG('away');
-  const total = home + away;
+  const home = calcManualXG('home');
+  const away = calcManualXG('away');
+  const total = home.xg + away.xg;
   const over25 = Math.round(Math.max(18, Math.min(92, 28 + total * 18)));
   const over15 = Math.round(Math.max(35, Math.min(97, 45 + total * 14)));
-  const gg     = Math.round(Math.max(20, Math.min(85, 30 + Math.min(home,away) * 28)));
+  const gg     = Math.round(Math.max(20, Math.min(85, 30 + Math.min(home.xg, away.xg) * 28)));
 
+  // Profilo casa
+  function teamProfile(avgGF, avgGA, ruolo){
+    const attacco  = avgGF >= 2.0 ? 'molto offensiva' : avgGF >= 1.4 ? 'offensiva' : avgGF >= 0.8 ? 'nella media' : 'poco propositiva';
+    const difesa   = avgGA <= 0.6 ? 'solidissima difensivamente' : avgGA <= 1.0 ? 'difensivamente solida' : avgGA <= 1.5 ? 'permeabile' : 'molto esposta';
+    const tendenza = avgGF >= 1.6 && avgGA <= 1.0 ? '→ profilo dominante' : avgGF >= 1.6 ? '→ attacca molto ma rischia' : avgGA <= 0.8 ? '→ gioca sul minimo indispensabile' : '→ gara aperta';
+    return `<b style="color:#22d3ee">${ruolo}</b>: ${attacco} in attacco, ${difesa}. <span style="color:#facc15">${tendenza}</span>`;
+  }
+
+  const homeProfile = teamProfile(home.avgGF, home.avgGA, 'Casa');
+  const awayProfile = teamProfile(away.avgGF, away.avgGA, 'Trasferta');
+
+  // Consiglio
   let consiglio, consiglioColor;
-  if(over15 >= 78)      { consiglio='✅ Over 1.5 — alta probabilità';       consiglioColor='#22d3ee'; }
-  else if(over25 >= 62) { consiglio='✅ Over 2.5 — scenario offensivo';      consiglioColor='#22d3ee'; }
-  else if(gg >= 62)     { consiglio='✅ GG — entrambe a segno probabile';    consiglioColor='#a78bfa'; }
+  if(over15 >= 78)      { consiglio='✅ Over 1.5 — alta probabilità';            consiglioColor='#22d3ee'; }
+  else if(over25 >= 62) { consiglio='✅ Over 2.5 — scenario offensivo';           consiglioColor='#22d3ee'; }
+  else if(gg >= 62)     { consiglio='✅ GG — entrambe a segno probabile';         consiglioColor='#a78bfa'; }
   else if(over25 < 40)  { consiglio='⚠️ Under 2.5 — gara potenzialmente chiusa'; consiglioColor='#facc15'; }
-  else                  { consiglio='ℹ️ Scenario equilibrato — valuta quota'; consiglioColor='#94a3b8'; }
+  else                  { consiglio='ℹ️ Scenario equilibrato — valuta quota';     consiglioColor='#94a3b8'; }
 
-  if(el('manualHomeXG'))  el('manualHomeXG').textContent  = home.toFixed(2);
-  if(el('manualAwayXG'))  el('manualAwayXG').textContent  = away.toFixed(2);
-  if(el('manualTotalXG')) el('manualTotalXG').textContent = total.toFixed(2);
-  if(el('manualOver25'))  el('manualOver25').textContent  = over25 + '%';
-  if(el('manualOver15'))  el('manualOver15').textContent  = over15 + '%';
-  if(el('manualGG'))      el('manualGG').textContent      = gg + '%';
+  if(el('manualHomeXG'))    el('manualHomeXG').textContent    = home.xg.toFixed(2);
+  if(el('manualAwayXG'))    el('manualAwayXG').textContent    = away.xg.toFixed(2);
+  if(el('manualTotalXG'))   el('manualTotalXG').textContent   = total.toFixed(2);
+  if(el('manualOver25'))    el('manualOver25').textContent    = over25 + '%';
+  if(el('manualOver15'))    el('manualOver15').textContent    = over15 + '%';
+  if(el('manualGG'))        el('manualGG').textContent        = gg + '%';
+  if(el('manualHomeAvgGF')) el('manualHomeAvgGF').textContent = home.avgGF.toFixed(2) + ' gol/partita';
+  if(el('manualAwayAvgGF')) el('manualAwayAvgGF').textContent = away.avgGF.toFixed(2) + ' gol/partita';
+  if(el('manualHomeAvgGA')) el('manualHomeAvgGA').textContent = home.avgGA.toFixed(2) + ' gol subiti/partita';
+  if(el('manualAwayAvgGA')) el('manualAwayAvgGA').textContent = away.avgGA.toFixed(2) + ' gol subiti/partita';
+  if(el('manualProfile'))   el('manualProfile').innerHTML     = homeProfile + '<br><br>' + awayProfile;
   if(el('manualConsiglio')){
     el('manualConsiglio').textContent = consiglio;
     el('manualConsiglio').style.color = consiglioColor;
@@ -1124,11 +1142,16 @@ function buildManualXG(m){
   const d = defaultManualStats(m);
   setTimeout(updateManualXG, 0);
 
+  const inputField = (id, label, val) => `<div class="xg-field">
+    <label>${label} <span style="font-size:9px;color:#22d3ee;background:rgba(34,211,238,.15);border-radius:4px;padding:1px 4px">AUTO</span></label>
+    <input id="${id}" type="number" step="1" min="0" value="${val}" oninput="updateManualXG()" style="border-color:rgba(34,211,238,.4)">
+  </div>`;
+
   return `<div class="xg-manual-box">
     <div class="xg-manual-head">
       <div>
         <div class="xg-manual-title">xG Stimato Kickora</div>
-        <div class="xg-manual-sub">Dati stagionali pre-match · trova i valori su SofaScore → Statistiche stagione</div>
+        <div class="xg-manual-sub">Gol totali ultime 5 partite · la media viene calcolata automaticamente</div>
       </div>
       <span class="chip cyan">PRE-MATCH</span>
     </div>
@@ -1137,15 +1160,21 @@ function buildManualXG(m){
       <div class="xg-team-card">
         <h3>${m.home} <span style="font-size:12px;color:var(--muted);font-weight:400">— Casa</span></h3>
         <div class="xg-input-grid">
-          ${xgInput('home','GoalsFor5',  '⚽ Media gol fatti (ultimi 5)',  d.homeGoalsFor5,   true)}
-          ${xgInput('home','GoalsAgainst5','🛡 Media gol subiti (ultimi 5)', d.homeGoalsAgainst5, true)}
+          ${inputField('homeGF','⚽ Gol fatti totali (ultimi 5)', d.homeGF)}
+          ${inputField('homeGA','🛡 Gol subiti totali (ultimi 5)', d.homeGA)}
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          Media: <span id="manualHomeAvgGF" style="color:#22d3ee;font-weight:900">—</span> &nbsp;·&nbsp; <span id="manualHomeAvgGA" style="color:#f472b6;font-weight:900">—</span>
         </div>
       </div>
       <div class="xg-team-card">
         <h3>${m.away} <span style="font-size:12px;color:var(--muted);font-weight:400">— Trasferta</span></h3>
         <div class="xg-input-grid">
-          ${xgInput('away','GoalsFor5',  '⚽ Media gol fatti (ultimi 5)',  d.awayGoalsFor5,   true)}
-          ${xgInput('away','GoalsAgainst5','🛡 Media gol subiti (ultimi 5)', d.awayGoalsAgainst5, true)}
+          ${inputField('awayGF','⚽ Gol fatti totali (ultimi 5)', d.awayGF)}
+          ${inputField('awayGA','🛡 Gol subiti totali (ultimi 5)', d.awayGA)}
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          Media: <span id="manualAwayAvgGF" style="color:#22d3ee;font-weight:900">—</span> &nbsp;·&nbsp; <span id="manualAwayAvgGA" style="color:#f472b6;font-weight:900">—</span>
         </div>
       </div>
     </div>
@@ -1160,6 +1189,11 @@ function buildManualXG(m){
     </div>
 
     <div class="xg-result-card" style="margin-top:12px;text-align:left;padding:14px 18px">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">📋 Profilo Squadre</span>
+      <div id="manualProfile" style="margin-top:8px;font-size:13px;line-height:1.8">-</div>
+    </div>
+
+    <div class="xg-result-card" style="margin-top:10px;text-align:left;padding:14px 18px">
       <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Consiglio xG</span>
       <b id="manualConsiglio" style="display:block;margin-top:6px;font-size:15px">-</b>
     </div>
@@ -1169,7 +1203,8 @@ function buildManualXG(m){
     </div>
 
     <div class="xg-note">
-      📊 Dove trovare i dati: <b>SofaScore</b> → partita → Statistiche → ultime 5 partite &nbsp;|&nbsp; <b>FBref</b> → squadra → Match logs
+      📊 Dove trovare i dati: <b>SofaScore</b> → partita → Statistiche → ultime 5 partite &nbsp;|&nbsp; <b>FBref</b> → squadra → Match logs<br>
+      Con API-Football i valori si compilano automaticamente.
     </div>
   </div>`;
 }
