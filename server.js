@@ -19,7 +19,98 @@ const CACHE_TTL_MINUTES = Number(process.env.CACHE_TTL_MINUTES || 360); // 6 ore
 
 const USE_MOCK = !API_FOOTBALL_KEY; // mock automatico se chiave assente
 
-// ─── RATE LIMIT ANTI-BAN ─────────────────────────────────────────────────────
+// ─── TELEGRAM BOT ─────────────────────────────────────────────────────────────
+const TELEGRAM_TOKEN   = process.env.TELEGRAM_TOKEN || null;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "623848005";
+
+async function sendTelegram(msg) {
+  if (!TELEGRAM_TOKEN) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: msg,
+        parse_mode: "HTML"
+      })
+    });
+    console.log("[Telegram] Messaggio inviato");
+  } catch (e) {
+    console.warn("[Telegram] Errore invio:", e.message);
+  }
+}
+
+function buildAlerts(matches) {
+  const alerts = [];
+  matches.forEach(m => {
+    const score = Math.round(Math.max(40, Math.min(92,
+      m.p.over15 * 0.45 + m.p.over25 * 0.30 + m.p.gg * 0.15 + Math.max(m.p.h, m.p.a) * 0.10
+    )));
+
+    if (m.p.over15 >= 82 && m.p.gg >= 60) {
+      alerts.push({ m, tag: "✅ OVER 1.5 SOLIDO", score,
+        text: `Over 1.5 all'${m.p.over15}% con GG al ${m.p.gg}%` });
+    } else if (m.p.over25 >= 65) {
+      alerts.push({ m, tag: "🔥 OVER 2.5 FORTE", score,
+        text: `Over 2.5 al ${m.p.over25}% — profilo offensivo elevato` });
+    } else if (m.p.gg >= 68 && m.p.over15 >= 78) {
+      alerts.push({ m, tag: "⚽ GG CONFERMATO", score,
+        text: `GG al ${m.p.gg}% — entrambe a segno molto probabile` });
+    } else if (m.p.dc1x >= 80 && m.p.h >= 50) {
+      alerts.push({ m, tag: "🛡 DC 1X SICURA", score,
+        text: `Doppia Chance 1X all'${m.p.dc1x}%` });
+    }
+  });
+  return alerts.sort((a, b) => b.score - a.score).slice(0, 5);
+}
+
+async function sendDailyAlerts() {
+  if (!TELEGRAM_TOKEN) return;
+  const date    = new Date().toISOString().slice(0, 10);
+  const cached  = cache.get(getCacheKey(date));
+  const matches = cached?.matches || [];
+
+  if (!matches.length) {
+    await sendTelegram("⚠️ <b>Kickora</b> — Nessuna partita caricata per oggi.");
+    return;
+  }
+
+  const alerts = buildAlerts(matches);
+
+  if (!alerts.length) {
+    await sendTelegram(`📊 <b>Kickora Daily</b> — ${date}\nNessun alert forte rilevato oggi.`);
+    return;
+  }
+
+  let msg = `🎯 <b>Kickora Alert — ${date}</b>\n${matches.length} partite analizzate · ${alerts.length} segnali forti\n\n`;
+  alerts.forEach((a, i) => {
+    msg += `${i + 1}. <b>${a.m.home} vs ${a.m.away}</b>\n`;
+    msg += `   📌 ${a.m.comp} · ${a.m.time}\n`;
+    msg += `   ${a.tag}\n`;
+    msg += `   ${a.text}\n`;
+    msg += `   K-Score: <b>${a.score}</b>\n\n`;
+  });
+  msg += `🔗 Apri Kickora per l'analisi completa.`;
+
+  await sendTelegram(msg);
+}
+
+// Job giornaliero — manda alert ogni mattina alle 09:00
+function scheduleDailyJob() {
+  const now   = new Date();
+  const next  = new Date();
+  next.setHours(9, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  const msUntil = next - now;
+  console.log(`[Telegram] Prossimo alert alle 09:00 (tra ${Math.round(msUntil/60000)} minuti)`);
+  setTimeout(() => {
+    sendDailyAlerts();
+    setInterval(sendDailyAlerts, 24 * 60 * 60 * 1000);
+  }, msUntil);
+}
+
+scheduleDailyJob();
 const MIN_INTERVAL_MS     = 10_000;  // minimo 10 sec tra una chiamata e l'altra
 const MAX_PER_MINUTE      = 6;       // mai oltre 6 req/min (limite reale: 10)
 let lastApiCall           = 0;
@@ -228,6 +319,19 @@ function normalizeApiFootballFixture(row) {
   };
 }
 
+// ─── ENDPOINT: TEST TELEGRAM ──────────────────────────────────────────────────
+app.get("/api/telegram/test", async (req, res) => {
+  if (!TELEGRAM_TOKEN) return res.json({ ok: false, error: "TELEGRAM_TOKEN non configurato" });
+  await sendTelegram("✅ <b>Kickora</b> — Bot Telegram connesso e funzionante!");
+  res.json({ ok: true, message: "Messaggio di test inviato su Telegram" });
+});
+
+app.get("/api/telegram/send-now", async (req, res) => {
+  if (!TELEGRAM_TOKEN) return res.json({ ok: false, error: "TELEGRAM_TOKEN non configurato" });
+  await sendDailyAlerts();
+  res.json({ ok: true, message: "Alert giornalieri inviati su Telegram" });
+});
+
 // ─── ENDPOINT: HEALTH ─────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => {
   resetDailyCounterIfNeeded();
@@ -235,7 +339,7 @@ app.get("/api/health", (req, res) => {
     ok:                   true,
     provider:             USE_MOCK ? "MOCK" : "API-Football",
     useMock:              USE_MOCK,
-    apiFootballConfigured: Boolean(API_FOOTBALL_KEY),
+    telegramConfigured: Boolean(TELEGRAM_TOKEN),
     oddsApiConfigured:    false,
     cacheTtlMinutes:      CACHE_TTL_MINUTES,
     apiCallsToday,
