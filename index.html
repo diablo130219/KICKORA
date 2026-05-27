@@ -1455,9 +1455,7 @@ function hardSelectMatch(id){
 
 function bindMatchClicks(){
   document.querySelectorAll('[data-match-id]').forEach(card => {
-    if(card.dataset.bound === '1') return;
-    card.dataset.bound = '1';
-    card.addEventListener('click', () => hardSelectMatch(card.dataset.matchId));
+    card.onclick = () => hardSelectMatch(card.dataset.matchId);
   });
 }
 
