@@ -97,31 +97,29 @@ function normalizeFixture(row) {
 
   // Estrai quote da odds se disponibili
   var oddsH = 0, oddsD = 0, oddsA = 0, over25 = 52, under25 = 48, gg = 54;
-  if (odds.length > 0) {
-    const bookmaker = odds[0];
-    const bets = (bookmaker.bets || bookmaker.values || []);
-    bets.forEach(function(bet) {
+  odds.forEach(function(bookmaker) {
+    (bookmaker.bets || []).forEach(function(bet) {
       const name = (bet.name || "").toLowerCase();
-      if (name.includes("match winner") || name.includes("1x2")) {
+      if (name === "match winner") {
         (bet.values || []).forEach(function(v) {
-          if (v.value === "Home") oddsH = Number(v.odd || 0);
-          if (v.value === "Draw") oddsD = Number(v.odd || 0);
-          if (v.value === "Away") oddsA = Number(v.odd || 0);
+          if (v.value === "Home" && !oddsH) oddsH = Number(v.odd || 0);
+          if (v.value === "Draw" && !oddsD) oddsD = Number(v.odd || 0);
+          if (v.value === "Away" && !oddsA) oddsA = Number(v.odd || 0);
         });
       }
-      if (name.includes("goals over/under") || name.includes("over/under")) {
+      if (name === "goals over/under") {
         (bet.values || []).forEach(function(v) {
           if (v.value === "Over 2.5") over25 = implied(v.odd);
           if (v.value === "Under 2.5") under25 = implied(v.odd);
         });
       }
-      if (name.includes("both teams") || name.includes("btts")) {
+      if (name === "both teams score") {
         (bet.values || []).forEach(function(v) {
           if (v.value === "Yes") gg = implied(v.odd);
         });
       }
     });
-  }
+  });
 
   var homeProb, drawProb, awayProb;
   if (oddsH > 0) {
@@ -180,11 +178,41 @@ function normalizeFixture(row) {
 
 async function fetchMatches(date) {
   if (!API_KEY) throw new Error("API_FOOTBALL_KEY non configurata");
-  // Una sola chiamata con odds incluse
-  const data = await apiFetch("/fixtures?date=" + date + "&status=NS-1H-HT-2H-ET-BT-P-SUSP-INT-LIVE");
-  const fixtures = data.response || [];
+
+  // Chiamata 1: fixture del giorno
+  const fixtureData = await apiFetch("/fixtures?date=" + date);
+  const fixtures = fixtureData.response || [];
   console.log("[API-Football] " + fixtures.length + " fixture per " + date);
-  return fixtures.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
+
+  // Mappa id -> fixture
+  var fixtureMap = {};
+  fixtures.forEach(function(row) {
+    if (row.fixture && row.fixture.id) fixtureMap[row.fixture.id] = row;
+  });
+
+  // Chiamata 2: odds del giorno (bookmaker 6 = Bet365)
+  var oddsMap = {};
+  try {
+    const oddsData = await apiFetch("/odds?date=" + date + "&bookmaker=6");
+    const oddsResp = oddsData.response || [];
+    oddsResp.forEach(function(o) {
+      if (o.fixture && o.fixture.id) oddsMap[o.fixture.id] = o;
+    });
+    console.log("[API-Football] " + oddsResp.length + " odds disponibili");
+  } catch(e) {
+    console.warn("[API-Football] Odds non disponibili:", e.message);
+  }
+
+  // Abbina odds ai fixture
+  var rows = fixtures.map(function(row) {
+    const fid = row.fixture && row.fixture.id;
+    if (fid && oddsMap[fid]) {
+      row.odds = oddsMap[fid].bookmakers || [];
+    }
+    return row;
+  });
+
+  return rows.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
 }
 
 // MOCK
