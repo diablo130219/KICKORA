@@ -879,6 +879,7 @@ function renderMatches(){
     </div>` : '';
 
   el('matches').innerHTML = cards + pagination;
+  bindMatchClicks();
 }
 
 function changePage(dir){
@@ -1455,7 +1456,9 @@ function hardSelectMatch(id){
 
 function bindMatchClicks(){
   document.querySelectorAll('[data-match-id]').forEach(card => {
-    card.onclick = () => hardSelectMatch(card.dataset.matchId);
+    if(card.dataset.bound === '1') return;
+    card.dataset.bound = '1';
+    card.addEventListener('click', () => hardSelectMatch(card.dataset.matchId));
   });
 }
 
