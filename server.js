@@ -178,41 +178,10 @@ function normalizeFixture(row) {
 
 async function fetchMatches(date) {
   if (!API_KEY) throw new Error("API_FOOTBALL_KEY non configurata");
-
-  // Chiamata 1: fixture del giorno
   const fixtureData = await apiFetch("/fixtures?date=" + date);
   const fixtures = fixtureData.response || [];
   console.log("[API-Football] " + fixtures.length + " fixture per " + date);
-
-  // Mappa id -> fixture
-  var fixtureMap = {};
-  fixtures.forEach(function(row) {
-    if (row.fixture && row.fixture.id) fixtureMap[row.fixture.id] = row;
-  });
-
-  // Chiamata 2: odds del giorno (bookmaker 6 = Bet365)
-  var oddsMap = {};
-  try {
-    const oddsData = await apiFetch("/odds?date=" + date + "&bookmaker=6");
-    const oddsResp = oddsData.response || [];
-    oddsResp.forEach(function(o) {
-      if (o.fixture && o.fixture.id) oddsMap[o.fixture.id] = o;
-    });
-    console.log("[API-Football] " + oddsResp.length + " odds disponibili");
-  } catch(e) {
-    console.warn("[API-Football] Odds non disponibili:", e.message);
-  }
-
-  // Abbina odds ai fixture
-  var rows = fixtures.map(function(row) {
-    const fid = row.fixture && row.fixture.id;
-    if (fid && oddsMap[fid]) {
-      row.odds = oddsMap[fid].bookmakers || [];
-    }
-    return row;
-  });
-
-  return rows.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
+  return fixtures.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
 }
 
 // MOCK
@@ -391,6 +360,5 @@ app.listen(PORT,HOST,function(){
   console.log("\nKICKORA su http://"+HOST+":"+PORT);
   console.log("Modalità: "+(USE_MOCK?"⚠️  MOCK":"✅  API-Football"));
   console.log("Cache TTL: "+CACHE_TTL_MINUTES+" min");
-  setTimeout(autoFetchOnStartup,3000);
   scheduleDailyJob();
 });
