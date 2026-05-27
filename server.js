@@ -178,7 +178,8 @@ function normalizeFixture(row) {
 
 async function fetchMatches(date) {
   if (!API_KEY) throw new Error("API_FOOTBALL_KEY non configurata");
-  const fixtureData = await apiFetch("/fixtures?date=" + date);
+  // Prova a ottenere fixtures con odds incluse in una sola chiamata
+  const fixtureData = await apiFetch("/fixtures?date=" + date + "&bookmaker=6");
   const fixtures = fixtureData.response || [];
   console.log("[API-Football] " + fixtures.length + " fixture per " + date);
   return fixtures.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
