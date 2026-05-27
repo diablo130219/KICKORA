@@ -178,11 +178,36 @@ function normalizeFixture(row) {
 
 async function fetchMatches(date) {
   if (!API_KEY) throw new Error("API_FOOTBALL_KEY non configurata");
-  // Prova a ottenere fixtures con odds incluse in una sola chiamata
-  const fixtureData = await apiFetch("/fixtures?date=" + date + "&bookmaker=6");
+
+  // Chiamata 1: tutti i fixture del giorno
+  const fixtureData = await apiFetch("/fixtures?date=" + date);
   const fixtures = fixtureData.response || [];
   console.log("[API-Football] " + fixtures.length + " fixture per " + date);
-  return fixtures.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
+
+  // Chiamata 2: odds di tutte le partite in una sola risposta
+  var oddsMap = {};
+  try {
+    await sleep(MIN_INTERVAL_MS); // rispetta rate limit
+    const oddsData = await apiFetch("/odds?date=" + date + "&bookmaker=6&bet=1");
+    const oddsResp = oddsData.response || [];
+    console.log("[API-Football] " + oddsResp.length + " odds disponibili");
+    oddsResp.forEach(function(o) {
+      if (o.fixture && o.fixture.id) {
+        oddsMap[o.fixture.id] = o.bookmakers || [];
+      }
+    });
+  } catch(e) {
+    console.warn("[API-Football] Odds non disponibili:", e.message);
+  }
+
+  // Abbina odds ai fixture per ID
+  var rows = fixtures.map(function(row) {
+    const fid = row.fixture && row.fixture.id;
+    if (fid && oddsMap[fid]) row.odds = oddsMap[fid];
+    return row;
+  });
+
+  return rows.map(normalizeFixture).filter(function(m) { return m.home && m.away; });
 }
 
 // MOCK
